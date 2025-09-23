@@ -1,0 +1,65 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+#include <stdint.h>
+#include <stdbool.h>
+
+// 引入要测试的 API 层头文件
+#include "../api/ad5932_api.h"
+
+// 引入模拟实现的头文件，这里包含了 ad5932_write 的 Mock 声明和全局变量
+#include "mocks/mock_ad5932_driver.h"
+
+// =========================================================================
+// API 层测试用例
+// =========================================================================
+
+void test_ad5932_reset(void) {
+  mock_ad5932_driver_reset(); // 重置模拟驱动状态
+
+  // 调用待测试的 API 函数
+  ad5932_reset();
+
+  // 验证 ad5932_write 函数是否被调用了
+  assert(ad5932_write_called == true);
+
+  // 验证 ad5932_write 函数接收到的数据是否正确
+  uint16_t expected_data = AD5932_REG_CONTROL | AD5932_CTRL_BASE;
+  assert(ad5932_last_written_data == expected_data);
+
+  printf("PASS: %s\n", __FUNCTION__);
+}
+
+void test_ad5932_set_waveform(void) {
+  // 测试正弦波
+  mock_ad5932_driver_reset();
+  ad5932_set_waveform(0);
+  assert(ad5932_write_called == true);
+  assert(ad5932_last_written_data == 0x0ED3);
+  printf("PASS: %s (Sine)\n", __FUNCTION__);
+
+  // 测试三角波
+  mock_ad5932_driver_reset();
+  ad5932_set_waveform(1);
+  assert(ad5932_write_called == true);
+  assert(ad5932_last_written_data == 0x0CD3);
+  printf("PASS: %s (Triangle)\n", __FUNCTION__);
+
+  // 测试方波
+  mock_ad5932_driver_reset();
+  ad5932_set_waveform(2);
+  assert(ad5932_write_called == true);
+  assert(ad5932_last_written_data == 0x09D3);
+  printf("PASS: %s (Square)\n", __FUNCTION__);
+}
+
+// 主测试运行器
+int main(void) {
+  printf("--- Running API Layer Tests ---\n");
+  test_ad5932_reset();
+  test_ad5932_set_waveform();
+
+  printf("\nAll API tests passed successfully!\n");
+  return EXIT_SUCCESS;
+}

@@ -6,4 +6,5 @@ enable_testing()
 
 add_subdirectory(protocol)
 add_subdirectory(driver)
+add_subdirectory(api)
 add_subdirectory(test)
