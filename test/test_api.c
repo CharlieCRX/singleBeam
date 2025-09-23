@@ -116,6 +116,49 @@ void test_ad5932_set_delta_frequency(void) {
 }
 
 
+void test_ad5932_set_number_of_increments(void) {
+  // 测试一个中间值
+  mock_ad5932_driver_reset();
+  uint16_t num_increments = 1000;
+  ad5932_set_number_of_increments(num_increments);
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == (0x1000 | num_increments));
+  printf("PASS: %s (Mid-range)\n", __FUNCTION__);
+
+  // 测试最小值
+  mock_ad5932_driver_reset();
+  num_increments = 2;
+  ad5932_set_number_of_increments(num_increments);
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == (0x1000 | num_increments));
+  printf("PASS: %s (Min-range)\n", __FUNCTION__);
+
+  // 测试最大值
+  mock_ad5932_driver_reset();
+  num_increments = 4095;
+  ad5932_set_number_of_increments(num_increments);
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == (0x1000 | num_increments));
+  printf("PASS: %s (Max-range)\n", __FUNCTION__);
+
+  // 测试超出范围的值，应该被限制在最大值4095
+  mock_ad5932_driver_reset();
+  num_increments = 5000; // 超出范围
+  ad5932_set_number_of_increments(num_increments);
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == (0x1000 | 4095));
+  printf("PASS: %s Max (Out-of-range)\n", __FUNCTION__);
+
+  // 测试超出范围的值，应该被限制在最小值2
+  mock_ad5932_driver_reset();
+  num_increments = 1; // 超出范围
+  ad5932_set_number_of_increments(num_increments);
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == (0x1000 | 2));
+  printf("PASS: %s Min (Out-of-range)\n", __FUNCTION__);
+}
+
+
 // 主测试运行器
 int main(void) {
   printf("--- Running API Layer Tests ---\n");
@@ -123,6 +166,7 @@ int main(void) {
   test_ad5932_set_waveform();
   test_ad5932_set_start_frequency();
   test_ad5932_set_delta_frequency();
+  test_ad5932_set_number_of_increments();
 
   printf("\nAll API tests passed successfully!\n");
   return EXIT_SUCCESS;

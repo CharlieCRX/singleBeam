@@ -97,4 +97,12 @@ void ad5932_set_start_frequency(uint32_t start_frequency_hz);
  */
 void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive);
 
+
+/**
+ * @brief 设置频率递增的次数。
+ *
+ * @param num_increments 递增次数，范围2~4095。
+ */
+void ad5932_set_number_of_increments(uint16_t num_increments);
+
 #endif // AD5932_API_H
