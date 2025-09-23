@@ -2,6 +2,7 @@
 #define AD5932_API_H
 
 #include <stdint.h>
+#include <stdbool.h> // 包含stdbool.h以定义bool类型
 
 // =============================================================================
 // AD5932 寄存器地址定义
@@ -86,5 +87,14 @@ void ad5932_set_waveform(int wave_type);
  * @param freq 起始频率，单位为Hz。
  */
 void ad5932_set_start_frequency(uint32_t start_frequency_hz);
+
+
+/**
+ * @brief 设置频率递增字和递增方向。
+ *
+ * @param delta_freq 频率递增值，单位为Hz。
+ * @param positive   递增方向，true表示正增量，false表示负增量。
+ */
+void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive);
 
 #endif // AD5932_API_H

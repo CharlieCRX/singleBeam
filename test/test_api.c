@@ -74,12 +74,55 @@ void test_ad5932_set_start_frequency(void) {
 }
 
 
+void test_ad5932_set_delta_frequency(void) {
+  uint32_t delta_freq_word;
+  uint16_t expected_write_LSBs, expected_write_MSBs;
+
+  // --- 测试正增量 ---
+  mock_ad5932_driver_reset();
+  double delta_freq = 500; // 500Hz
+  ad5932_set_delta_frequency(delta_freq, true); // true表示正增量
+
+  // 计算频率字: delta_freq_word = (delta_freq * 2^24) / MCLK(50MHz)
+  delta_freq_word = 167; // 500Hz的频率字
+
+  // 第一次写入: 0b0010 + 低12位
+  expected_write_LSBs = 0x2000 | (delta_freq_word & 0x0FFF);
+
+  // 第二次写入: 0b0011 + 0 + 高11位
+  expected_write_MSBs = 0x3000 | ((delta_freq_word >> 12) & 0x07FF);
+
+  assert(ad5932_write_call_count == 2);
+  assert(ad5932_write_call_history[0] == expected_write_LSBs);
+  assert(ad5932_write_call_history[1] == expected_write_MSBs);
+
+  // --- 测试负增量 ---
+  mock_ad5932_driver_reset();
+  delta_freq = 600; // 500Hz
+  ad5932_set_delta_frequency(delta_freq, false); // false表示负增量
+
+  // 计算频率字: delta_freq_word = (delta_freq * 2^24) / MCLK(50MHz)
+  delta_freq_word = 201; // 600Hz的频率字
+
+  // 第一次写入: 0b0010 + 低12位
+  expected_write_LSBs = 0x2000 | (delta_freq_word & 0x0FFF);
+
+  // 第二次写入: 0b0011 + 1 + 高11位
+  expected_write_MSBs = 0x3000 | 0x0800 | ((delta_freq_word >> 12) & 0x07FF);
+
+  assert(ad5932_write_call_count == 2);
+  assert(ad5932_write_call_history[0] == expected_write_LSBs);
+  assert(ad5932_write_call_history[1] == expected_write_MSBs);
+}
+
+
 // 主测试运行器
 int main(void) {
   printf("--- Running API Layer Tests ---\n");
   test_ad5932_reset();
   test_ad5932_set_waveform();
   test_ad5932_set_start_frequency();
+  test_ad5932_set_delta_frequency();
 
   printf("\nAll API tests passed successfully!\n");
   return EXIT_SUCCESS;

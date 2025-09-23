@@ -92,3 +92,37 @@ void ad5932_set_start_frequency(uint32_t start_frequency_hz) {
 
   usleep(10000);
 }
+
+
+/**
+ * @brief 设置频率递增字和递增方向。
+ *
+ * 该函数根据输入的频率增量值和方向，计算出23位的频率递增字，并分两次
+ * 写入到AD5932的频率递增寄存器（FDELTA_L, FDELTA_H）。如果 `positive` 为
+ * false，则将频率递增字取反以实现负向递增。
+ *
+ * @param delta_freq 频率递增值，单位为Hz。
+ * @param positive   递增方向，true表示正增量，false表示负增量。
+ */
+void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive) {
+  uint32_t delta_word;
+  uint16_t delta_low12, delta_high11;
+
+  // 计算频率递增字: DELTA_WORD = (delta_f * 2^24) / MCLK
+  delta_word = (uint32_t)((delta_freq * FREQ_WORD_MULTIPLIER) / MCLK_FREQUENCY);
+
+  delta_low12  = delta_word & 0x0FFF;         // 低12位
+  delta_high11 = (delta_word >> 12) & 0x07FF; // 高11位
+
+  // 如果是负增量，则D11的位置为1
+  if (!positive) {
+    delta_high11 |= 0x0800; // 设置D11为1，表示负增量
+  }
+
+  // 写入低12位
+  ad5932_write(AD5932_REG_DELTA_FREQ_L | delta_low12);
+  // 写入高11位
+  ad5932_write(AD5932_REG_DELTA_FREQ_H | delta_high11);
+
+  usleep(10000);
+}
