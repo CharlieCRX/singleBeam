@@ -159,6 +159,75 @@ void test_ad5932_set_number_of_increments(void) {
 }
 
 
+void test_ad5932_set_increment_interval(void) {
+  uint16_t expected_data;
+
+  // --- 场景1: 基于输出周期，interval=1000 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(0, 0, 1000);
+  expected_data = 0x4000 | 1000;
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);
+  printf("PASS: %s (Output Cycles Mode)\n", __FUNCTION__);
+
+  // --- 场景2.1: 基于基于MCLK，multiplier=1 (5x)，interval=500 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(1, 1, 500);
+  expected_data = 0x4000 | (1 << 13) | (1 << 11) | 500;
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);
+  printf("PASS: %s (MCLK Mode, Multiplier=1)\n", __FUNCTION__);
+
+  // --- 场景2.2: 基于基于MCLK，multiplier=3 (500x)，interval=2000 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(1, 3, 2000);
+  expected_data = 0x4000 | (1 << 13) | (1 << 12) | (1 << 11) | 2000;
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);
+  printf("PASS: %s (MCLK Mode, Multiplier=3)\n", __FUNCTION__);
+
+  // --- 场景3: interval超出范围，应该被限制在2047 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(0, 0, 3000); // interval超出范围
+  expected_data = 0x4000 | 2047; // 应该被限制在2047
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);  
+  printf("PASS: %s (Interval Out-of-range)\n", __FUNCTION__);
+
+  // --- 场景4.1: mode无效，应该被限制在1 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(5, 0, 1000); // mode无效
+  expected_data = 0x4000 | (1 << 13) | 1000; // 超过1的部分被限制为1
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);  
+  printf("PASS: %s (Mode Out-of-range)\n", __FUNCTION__);
+
+  // --- 场景4.2: mode无效，应该被限制在0 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(-3, 0, 1000); // mode
+  expected_data = 0x4000 | 1000; // 低于0的部分被限制为0
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);
+  printf("PASS: %s (Mode Out-of-range)\n", __FUNCTION__);
+
+  // --- 场景5.1: mclk_mult无效，应该被限制在3 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(1, 5, 1000); // mclk_mult无效
+  expected_data = 0x4000 | (1 << 13) | (3 << 11) | 1000; // 超出则限制为3
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);  
+  printf("PASS: %s (MCLK Multiplier Out-of-range)\n", __FUNCTION__);
+
+  // --- 场景5.2: mclk_mult无效，应该被限制在0 ---
+  mock_ad5932_driver_reset();
+  ad5932_set_increment_interval(1, -2, 1000); // mclk_mult无效
+  expected_data = 0x4000 | (1 << 13) | 1000; // 低于0的部分被限制为0
+  assert(ad5932_write_call_count == 1);
+  assert(ad5932_write_call_history[0] == expected_data);  
+  printf("PASS: %s (MCLK Multiplier Out-of-range)\n", __FUNCTION__);
+}
+
+
 // 主测试运行器
 int main(void) {
   printf("--- Running API Layer Tests ---\n");
@@ -167,6 +236,7 @@ int main(void) {
   test_ad5932_set_start_frequency();
   test_ad5932_set_delta_frequency();
   test_ad5932_set_number_of_increments();
+  test_ad5932_set_increment_interval();
 
   printf("\nAll API tests passed successfully!\n");
   return EXIT_SUCCESS;

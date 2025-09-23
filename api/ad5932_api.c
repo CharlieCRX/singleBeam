@@ -147,3 +147,39 @@ void ad5932_set_number_of_increments(uint16_t num_increments) {
   ad5932_write(AD5932_REG_NUM_INCR | (num_increments & 0x0FFF));
   usleep(10000);
 }
+
+
+/**
+ * @brief 设置频率递增的时间间隔。
+ *
+ * 该函数根据输入的模式、乘数和间隔值，计算出递增间隔寄存器（TINC）的值
+ * 并写入芯片。函数会确保 `mode` 在0或1之间，`multiplier` 在0到3之间，且
+ * `interval` 不超过2047。
+ *
+ * @param mode        递增间隔模式， 0 = 基于输出信号的周期数, 1 = 基于MCLK。
+ * @param multiplier  当mode为1时的乘数选择，0=1x, 1=5x, 2=100x, 3=500x。
+ * @param interval    递增间隔值，范围0~2047。
+ */
+void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval) {
+  uint16_t reg_value = AD5932_REG_INCR_INTVL;
+  
+  // 确保在有效范围内
+  if (interval < 2) interval = 2;
+  if (interval > 2047) interval = 2047;
+  if (mode < 0) mode = 0;
+  if (mode > 1) mode = 1;
+  if (mclk_mult < 0) mclk_mult = 0;
+  if (mclk_mult > 3) mclk_mult = 3;
+
+  // 设置间隔值(低11位)
+  reg_value |= (interval & 0x07FF);
+
+  // 设置乘数(位11-12)
+  reg_value |= ((mclk_mult & 0x03) << 11);
+
+  // 设置模式(位13)
+  reg_value |= ((mode & 0x01) << 13);
+
+  ad5932_write(reg_value);
+  usleep(10000);
+}
