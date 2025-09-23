@@ -61,12 +61,6 @@
 #define AD5932_CTRL_BASE   (AD5932_CTRL_RSVD7 | AD5932_CTRL_RSVD6 | \
               AD5932_CTRL_RSVD4 | AD5932_CTRL_RSVD1 | AD5932_CTRL_RSVD0)
 
-// 默认控制字，仅包含保留位，用于复位操作
-#define AD5932_CTRL_BASE (AD5932_CTRL_RSVD7 | AD5932_CTRL_RSVD6 | AD5932_CTRL_RSVD4 | AD5932_CTRL_RSVD1 | AD5932_CTRL_RSVD0)
-
-// 声明驱动层写入函数，API层依赖此函数进行通信
-void ad5932_write(uint16_t data);
-
 /**
  * @brief 软复位AD5932芯片。
  *
@@ -84,5 +78,13 @@ void ad5932_reset(void);
  * @param wave_type 波形类型(0=正弦波, 1=三角波, 2=方波)
  */
 void ad5932_set_waveform(int wave_type);
+
+
+/**
+ * @brief 设置频率扫描的起始频率。
+ *
+ * @param freq 起始频率，单位为Hz。
+ */
+void ad5932_set_start_frequency(uint32_t start_frequency_hz);
 
 #endif // AD5932_API_H

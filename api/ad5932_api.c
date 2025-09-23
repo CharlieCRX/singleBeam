@@ -3,6 +3,12 @@
 #include <stdint.h>
 #include <unistd.h> // 包含usleep函数，用于必要的延时
 
+// AD5932 主时钟频率 (根据实际硬件配置)
+#define MCLK_FREQUENCY 50000000.0 // 50 MHz
+
+// 计算频率字的乘数因子 (2^24)
+#define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
+
 /**
  * @brief 软复位AD5932芯片。
  *
@@ -14,8 +20,8 @@
  * 处于就绪状态，因此这里添加了一个10毫秒（10000微秒）的延时。
  */
 void ad5932_reset(void) {
-  // 构造复位命令：将控制寄存器地址与默认控制字进行按位或操作
-  uint16_t reset_command = AD5932_REG_CONTROL | AD5932_CTRL_BASE;
+  // 构造复位命令: 控制寄存器地址 + 基础控制字 + 24位频率模式
+  uint16_t reset_command = AD5932_REG_CONTROL | AD5932_CTRL_BASE | AD5932_CTRL_B24;
   
   // 调用驱动层的写入函数，将复位命令发送给芯片
   ad5932_write(reset_command);
@@ -62,4 +68,27 @@ void ad5932_set_waveform(int wave_type) {
 
   ad5932_write(control);
   usleep(10000); // 添加一个短暂的延时，以确保设置操作完成
+}
+
+
+/**
+ * @brief 设置频率扫描的起始频率。
+ *
+ * 该函数根据输入的起始频率，计算出24位的频率字，并分两次写入到
+ * AD5932的起始频率寄存器（FSTART_L, FSTART_H）。
+ *
+ * @param freq 起始频率，单位为Hz。
+ */
+void ad5932_set_start_frequency(uint32_t start_frequency_hz) {
+  uint32_t freq_word;
+
+  // 计算频率字: FREQ_WORD = (fout * 2^24) / MCLK
+  freq_word = (uint32_t)((start_frequency_hz * FREQ_WORD_MULTIPLIER) / MCLK_FREQUENCY);
+  
+  // 写入低12位
+  ad5932_write(AD5932_REG_FSTART_L | (freq_word & 0x0FFF));
+  // 写入高12位
+  ad5932_write(AD5932_REG_FSTART_H | ((freq_word >> 12) & 0x0FFF));
+
+  usleep(10000);
 }
