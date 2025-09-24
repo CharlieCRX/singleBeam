@@ -48,7 +48,23 @@ target_include_directories(api_test PUBLIC
     ${CMAKE_CURRENT_SOURCE_SDIR}/../api
 )
 
+
+# 添加App层测试的可执行文件
+add_executable(app_test
+    test_app.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_ad5932_api.c # 直接添加mock源文件
+    ${CMAKE_CURRENT_SOURCE_DIR}/../app/wavegen_app.c    # app层源文件
+)
+# 不再链接api_layer，直接依赖app_layer
+target_link_libraries(app_test PRIVATE app_layer)
+target_include_directories(app_test PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+    ${CMAKE_CURRENT_SOURCE_DIR}/../app
+    ${CMAKE_CURRENT_SOURCE_DIR}/../api
+)
+
 # 将可执行文件添加到 CTest 测试套件中
 add_test(NAME run_protocol_test COMMAND protocol_test)
 add_test(NAME run_driver_test COMMAND driver_test)
 add_test(NAME run_api_test COMMAND api_test)
+add_test(NAME run_app_test COMMAND app_test)
