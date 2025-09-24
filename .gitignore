@@ -31,3 +31,4 @@ CTestTestfile.cmake
 # 备份和临时文件
 *~
 *.swp
+*.sh

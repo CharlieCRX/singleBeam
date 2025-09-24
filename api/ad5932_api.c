@@ -156,8 +156,10 @@ void ad5932_set_number_of_increments(uint16_t num_increments) {
  * @brief 设置频率递增的时间间隔。
  *
  * 该函数根据输入的模式、乘数和间隔值，计算出递增间隔寄存器（TINC）的值
- * 并写入芯片。函数会确保 `mode` 在0或1之间，`mclk_mult` 在0到3之间，
- * `interval` 在2到2047之间。
+ * 并写入芯片。函数会确保:
+ * `mode`      在0或1之间，
+ * `mclk_mult` 在0到3之间，
+ * `interval`  在2到2047之间。
  *
  * @param mode        递增间隔模式， 0 = 基于输出信号的周期数, 1 = 基于MCLK。
  * @param mclk_mult   当mode为1时的乘数选择，0=1x, 1=5x, 2=100x, 3=500x。(这里暂时不考虑 mode 是否为1)//TODO
@@ -185,4 +187,33 @@ void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval) {
 
   ad5932_write(reg_value);
   usleep(10000);
+}
+
+
+/**
+ * @brief INTERRUPT 引脚：终止扫频，恢复初始电平
+ */
+void ad5932_interrupt(void){
+  // todo
+}
+
+/**
+ * @brief SYNCOUT 引脚：查询是否扫频结束
+ */
+bool ad5932_is_sweep_done(void) {
+  return true; // TODO: 实际实现需要读取SYNCOUT引脚状态
+}
+
+/**
+ * @brief CTRL 引脚：触发频率递增
+ */
+void ad5932_start_sweep(void) {
+  // todo
+}
+
+/**
+ * @brief STANDBY 引脚：暂停或恢复输出 + 配合 reset 进入低功耗模式
+ */
+void ad5932_set_standby(bool enable) {
+  // todo
 }

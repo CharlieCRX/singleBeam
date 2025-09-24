@@ -114,4 +114,27 @@ void ad5932_set_number_of_increments(uint16_t num_increments);
  */
 void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval);
 
+
+// ========== 与引脚相关的操作 ==========
+
+/**
+ * @brief INTERRUPT 引脚：终止扫频，恢复初始电平
+ */
+void ad5932_interrupt(void);
+
+/**
+ * @brief SYNCOUT 引脚：查询是否扫频结束
+ */
+bool ad5932_is_sweep_done(void);
+
+/**
+ * @brief CTRL 引脚：触发频率递增
+ */
+void ad5932_start_sweep(void);
+
+/**
+ * @brief STANDBY 引脚：暂停或恢复输出 + 配合 reset 进入低功耗模式
+ */
+void ad5932_set_standby(bool enable);
+
 #endif // AD5932_API_H
