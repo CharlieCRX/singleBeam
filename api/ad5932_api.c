@@ -9,11 +9,12 @@
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
 
+
 /**
  * @brief 软复位AD5932芯片。
  *
- * 此函数通过向AD5932的控制寄存器（AD5932_REG_CONTROL）写入一个
- * 包含所有保留位（必须为1）的默认控制字，从而执行复位操作。
+ * 此函数通过向AD5932的控制寄存器写入一个包含所有保留位（必须为1）
+ * 的默认控制字，从而执行复位操作。
  * 这种写入行为会使芯片的内部状态机回到初始状态。
  *
  * @note 根据AD5932数据手册，复位后可能需要短暂的延时以确保芯片
@@ -35,16 +36,18 @@ void ad5932_reset(void) {
  *
  * 该函数根据 `wave_type` 参数来配置AD5932的控制寄存器。
  * 1. 初始化控制字，包含所有保留位、24位频率模式和DAC使能。
+ *    并且默认 SYNCOUT 使能和频率递增结束后同步输出信号。
  * 2. 使用 switch 语句根据波形类型修改控制字。
- * - 正弦波：启用 AD5932_CTRL_SINE，禁用 AD5932_CTRL_MSBOUT_EN。
- * - 三角波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_MSBOUT_EN。
- * - 方波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_DAC_EN，启用 AD5932_CTRL_MSBOUT_EN。
+ *    - 正弦波：启用 AD5932_CTRL_SINE，禁用 AD5932_CTRL_MSBOUT_EN。
+ *    - 三角波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_MSBOUT_EN。
+ *    - 方波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_DAC_EN，启用 AD5932_CTRL_MSBOUT_EN。
  * 3. 将最终的控制字通过 ad5932_write 函数写入芯片。
  *
  * @param wave_type 波形类型(0=正弦波, 1=三角波, 2=方波)
  */
 void ad5932_set_waveform(int wave_type) {
-  uint16_t control = AD5932_REG_CONTROL | AD5932_CTRL_BASE | AD5932_CTRL_B24 | AD5932_CTRL_DAC_EN;
+  uint16_t control = AD5932_REG_CONTROL | AD5932_CTRL_BASE | AD5932_CTRL_B24 | AD5932_CTRL_DAC_EN 
+    | AD5932_CTRL_SYNC_EN | AD5932_CTRL_SYNC_EOS;
 
   switch(wave_type) {
     case 0: // 正弦波
@@ -153,11 +156,11 @@ void ad5932_set_number_of_increments(uint16_t num_increments) {
  * @brief 设置频率递增的时间间隔。
  *
  * 该函数根据输入的模式、乘数和间隔值，计算出递增间隔寄存器（TINC）的值
- * 并写入芯片。函数会确保 `mode` 在0或1之间，`multiplier` 在0到3之间，且
- * `interval` 不超过2047。
+ * 并写入芯片。函数会确保 `mode` 在0或1之间，`mclk_mult` 在0到3之间，
+ * `interval` 在2到2047之间。
  *
  * @param mode        递增间隔模式， 0 = 基于输出信号的周期数, 1 = 基于MCLK。
- * @param multiplier  当mode为1时的乘数选择，0=1x, 1=5x, 2=100x, 3=500x。
+ * @param mclk_mult   当mode为1时的乘数选择，0=1x, 1=5x, 2=100x, 3=500x。(这里暂时不考虑 mode 是否为1)//TODO
  * @param interval    递增间隔值，范围0~2047。
  */
 void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval) {

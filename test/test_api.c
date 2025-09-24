@@ -36,21 +36,21 @@ void test_ad5932_set_waveform(void) {
   mock_ad5932_driver_reset();
   ad5932_set_waveform(0);
   assert(ad5932_write_called == true);
-  assert(ad5932_last_written_data == 0x0ED3);
+  assert(ad5932_last_written_data == 0x0EDF);
   printf("PASS: %s (Sine)\n", __FUNCTION__);
 
   // 测试三角波
   mock_ad5932_driver_reset();
   ad5932_set_waveform(1);
   assert(ad5932_write_called == true);
-  assert(ad5932_last_written_data == 0x0CD3);
+  assert(ad5932_last_written_data == 0x0CDF);
   printf("PASS: %s (Triangle)\n", __FUNCTION__);
 
   // 测试方波
   mock_ad5932_driver_reset();
   ad5932_set_waveform(2);
   assert(ad5932_write_called == true);
-  assert(ad5932_last_written_data == 0x09D3);
+  assert(ad5932_last_written_data == 0x09DF);
   printf("PASS: %s (Square)\n", __FUNCTION__);
 }
 
