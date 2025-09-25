@@ -4,6 +4,11 @@
 #include <stdint.h>
 
 /**
+ * @brief 初始化AD5932驱动
+ */
+void ad5932_init(void);
+
+/**
  * @brief 将16位数据写入AD5932寄存器。
  * @param data 要写入的16位数据。
  */
