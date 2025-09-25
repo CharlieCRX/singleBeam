@@ -7,6 +7,9 @@
  * @param frequency_hz 目标输出频率，单位为赫兹。
  */
 void wavegen_output_fixed_wave(int wave_type, uint32_t frequency_hz) {
+  ad5932_set_standby(false); // 退出待机模式
+  ad5932_reset();            // 复位芯片
+
   // 设置频率。
   ad5932_set_start_frequency(frequency_hz);
 

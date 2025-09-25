@@ -20,10 +20,21 @@ void test_wavegen_output_stable_waveform_calls_api_with_correct_params() {
   wavegen_output_fixed_wave(test_wave_type, test_frequency);
 
   // 3. 验证阶段：使用 assert 验证结果
+  // 验证 ad5932_set_standby 是否被调用了一次，且参数为 false
+  assert(mock_ad5932_set_standby_called_times == 1);
+  assert(mock_ad5932_set_standby_param_enable == false);
+  
+  // 验证 ad5932_reset 是否被调用了一次
+  assert(mock_ad5932_reset_called_times == 1);
+
+  // 验证 ad5932_set_waveform 是否被调用了一次
   assert(mock_ad5932_set_waveform_called_times == 1);
+  // 验证 ad5932_set_waveform 传入的参数是否正确
   assert(mock_ad5932_set_waveform_param_wave_type == test_wave_type);
 
+  // 验证 ad5932_set_start_frequency 是否被调用了一次
   assert(mock_ad5932_set_start_frequency_called_times == 1);
+  // 验证 ad5932_set_start_frequency 传入的参数是否正确
   assert(mock_ad5932_set_start_frequency_param_freq == test_frequency);
 }
 

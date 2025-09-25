@@ -212,8 +212,9 @@ void ad5932_start_sweep(void) {
 }
 
 /**
- * @brief STANDBY 引脚：暂停或恢复输出 + 配合 reset 进入低功耗模式
+ * @brief STANDBY 引脚：暂停或恢复输出 + 也可配合 reset 进入低功耗模式
  */
 void ad5932_set_standby(bool enable) {
   // todo
+  usleep(10000);
 }
