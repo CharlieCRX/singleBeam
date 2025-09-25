@@ -20,6 +20,8 @@
  * 处于就绪状态，因此这里添加了一个10毫秒（10000微秒）的延时。
  */
 void ad5932_reset(void) {
+  ad5932_init(); // 初始化驱动层（确保SPI已初始化）
+
   // 构造复位命令: 控制寄存器地址 + 基础控制字 + 24位频率模式
   uint16_t reset_command = AD5932_REG_CONTROL | AD5932_CTRL_BASE | AD5932_CTRL_B24;
   
