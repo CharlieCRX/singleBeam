@@ -101,14 +101,14 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive);
 /**
  * @brief 设置频率递增的次数。
  *
- * @param num_increments 递增次数，范围2~4095。
+ * @param frequency_increments 递增次数，范围2~4095。
  */
-void ad5932_set_number_of_increments(uint16_t num_increments);
+void ad5932_set_number_of_increments(uint16_t frequency_increments);
 
 /**
  * @brief 设置频率递增的时间间隔。
  *
- * @param mode        递增间隔模式，0表示基于输出周期，1表示基于MCLK。
+ * @param mode        递增间隔模式，0表示基于输出周期，1表示基于MCLK(50MHz)。
  * @param mclk_mult   MCLK倍频选择，仅在mode=1时有效。0=1x, 1=5x, 2=100x, 3=500x。
  * @param interval    递增间隔值，范围0~2047。
  */

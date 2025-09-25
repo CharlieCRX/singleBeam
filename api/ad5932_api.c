@@ -9,6 +9,8 @@
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
 
+#define DELTAF_WORD_MULTIPLIER 8388608.0 // 2^23
+
 
 /**
  * @brief 软复位AD5932芯片。
@@ -111,7 +113,7 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive) {
   uint32_t delta_word;
   uint16_t delta_low12, delta_high11;
 
-  // 计算频率递增字: DELTA_WORD = (delta_f * 2^24) / MCLK
+  // 计算频率递增字: DELTA_WORD = (delta_f * 2^24) / MCLK // todo: 2^23?
   delta_word = (uint32_t)((delta_freq * FREQ_WORD_MULTIPLIER) / MCLK_FREQUENCY);
 
   delta_low12  = delta_word & 0x0FFF;         // 低12位
@@ -119,7 +121,7 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive) {
 
   // 如果是负增量，则D11的位置为1
   if (!positive) {
-    delta_high11 |= 0x0800; // 设置D11为1，表示负增量
+    delta_high11 |= (1 << 11); // 设置D11为1，表示负增量
   }
 
   // 写入低12位
@@ -137,17 +139,17 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive) {
  * 该函数将输入的递增次数写入到AD5932的递增次数寄存器（NINC）。
  * 递增次数的有效范围是2到4095，函数会确保输入值在此范围内。
  *
- * @param num_increments 递增次数，范围2~4095。
+ * @param frequency_increments 递增次数，范围2~4095。
  */
-void ad5932_set_number_of_increments(uint16_t num_increments) {
+void ad5932_set_number_of_increments(uint16_t frequency_increments) {
   // 确保递增次数在有效范围内
-  if (num_increments < 2) {
-    num_increments = 2;
-  } else if (num_increments > 4095) {
-    num_increments = 4095;
+  if (frequency_increments < 2) {
+    frequency_increments = 2;
+  } else if (frequency_increments > 4095) {
+    frequency_increments = 4095;
   }
   // 写入递增次数寄存器
-  ad5932_write(AD5932_REG_NUM_INCR | (num_increments & 0x0FFF));
+  ad5932_write(AD5932_REG_NUM_INCR | (frequency_increments & 0x0FFF));
   usleep(10000);
 }
 
