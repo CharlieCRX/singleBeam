@@ -46,4 +46,55 @@ void wavegen_config_sweep_by_time_interval(int wave_type, uint32_t start_freq_hz
 
   // 设置波形类型。
   ad5932_set_waveform(wave_type);
-} 
+}
+
+
+/**
+ * @brief 配置波形发生器进行频率扫描，按输出信号周期数递增频率。
+ * 
+ * @param wave_type     波形类型（例如：0正弦波、1三角波、2方波）。
+ * @param start_freq_hz 起始频率，单位为赫兹。
+ * @param delta_f_hz    每步频率递增值，单位为赫兹。
+ * @param sweep_points  扫描的频点总数。
+ * @param mclk_mult     MCLK的分频倍数选择，0=1x, 1=5x, 2=100x, 3=500x。
+ * @param interval      每步递增间隔值，范围2~2047。
+ */
+void wavegen_config_sweep_by_output_cycle_interval(int wave_type, uint32_t start_freq_hz, uint32_t delta_f_hz, uint16_t sweep_points, int mclk_mult, uint16_t interval) {
+  ad5932_set_standby(false); // 退出待机模式
+  ad5932_reset();            // 复位芯片
+
+  // 设置起始频率。
+  ad5932_set_start_frequency(start_freq_hz);
+
+  // 设置每步频率递增值。
+  ad5932_set_delta_frequency(delta_f_hz, true); // true表示正向递增
+
+  // 设置扫描的频点总数。
+  ad5932_set_number_of_increments(sweep_points);
+
+  // 设置输出周期数间隔 
+  ad5932_set_increment_interval(0, mclk_mult, interval); // mode=0(输出周期数间隔)，mclk_mult=1(不分频)，interval=N个周期
+
+  // 设置波形类型。
+  ad5932_set_waveform(wave_type);
+}
+
+
+/**
+ * @brief 查询当前扫频是否结束。
+ * 
+ * @return true 如果扫频已结束。
+ * @return false 如果扫频仍在进行中。
+ */
+bool wavegen_is_sweep_finished() {
+  return ad5932_is_sweep_done();
+}
+
+/**
+ * @brief 中止当前扫频操作，恢复到初始状态。
+ */
+void wavegen_abort_sweep() {
+  ad5932_interrupt(); // 触发中断，终止扫频
+  ad5932_reset();     // 复位芯片
+  ad5932_set_standby(true); // 进入待机模式，停止输出
+}

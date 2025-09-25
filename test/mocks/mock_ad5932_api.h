@@ -38,4 +38,10 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive);
 void ad5932_set_number_of_increments(uint16_t frequency_increments);
 void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval);
 
+// 其他与引脚相关的API函数声明
+void ad5932_interrupt(void);
+bool ad5932_is_sweep_done(void);
+void ad5932_start_sweep(void);
+void ad5932_set_standby(bool enable);
+
 #endif // _MOCK_AD5932_API_H_

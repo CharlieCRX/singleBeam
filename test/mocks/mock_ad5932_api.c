@@ -81,3 +81,17 @@ void ad5932_set_standby(bool enable) {
   mock_ad5932_set_standby_called_times++;
   mock_ad5932_set_standby_param_enable = enable;
 }
+
+// 其他与引脚相关的API函数的空实现
+void ad5932_interrupt(void) {
+  // 空实现
+}
+
+bool ad5932_is_sweep_done(void) {
+  // 默认返回 false，表示扫频未完成
+  return false;
+}
+
+void ad5932_start_sweep(void) {
+  // 空实现
+}
