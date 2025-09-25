@@ -3,9 +3,6 @@
 #include <stdint.h>
 #include <unistd.h> // 包含usleep函数，用于必要的延时
 
-// AD5932 主时钟频率 (根据实际硬件配置)
-#define MCLK_FREQUENCY 50000000.0 // 50 MHz
-
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
 

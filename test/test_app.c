@@ -53,13 +53,13 @@ void test_wavegen_config_sweep_by_time_interval_calls_api_with_correct_params() 
   uint32_t start_freq = 10000;
   uint32_t delta_f_hz = 100;
   uint16_t sweep_points = 10; // 10个频点
-  uint32_t sweep_duration_us = 1000; // 1000微秒
-  
-  // 计算每步时间间隔 (微秒)
-  uint32_t t_step_us = sweep_duration_us / sweep_points; // 1000 / 10 = 100us
+  int mclk_mult = 0; // mclk不分频
+  uint16_t interval = 1; // mclk不分频
   
   // 调用被测函数
-  wavegen_config_sweep_by_time_interval(test_wave_type, start_freq, delta_f_hz, sweep_points, sweep_duration_us);
+  wavegen_config_sweep_by_time_interval(test_wave_type, start_freq, delta_f_hz, sweep_points, mclk_mult, interval);
+
+  int expected_mode = 1; // 时间间隔模式
 
   // 验证调用
   // 1. 验证是否关闭了 STANDBY 引脚
@@ -82,9 +82,9 @@ void test_wavegen_config_sweep_by_time_interval_calls_api_with_correct_params() 
 
   // 6. 验证写入的时间间隔参数
   assert(mock_ad5932_set_increment_interval_called_times == 1);
-  // assert(mock_ad5932_set_increment_interval_param_mode == expected_mode);           // todo
-  // assert(mock_ad5932_set_increment_interval_param_mclk_mult == expected_mclk_mult); // todo
-  // assert(mock_ad5932_set_increment_interval_param_interval == expected_interval);   // todo
+  assert(mock_ad5932_set_increment_interval_param_mode == expected_mode);
+  assert(mock_ad5932_set_increment_interval_param_mclk_mult == mclk_mult);
+  assert(mock_ad5932_set_increment_interval_param_interval == interval);
 
   // 7. 验证是否设置了波形类型
   assert(mock_ad5932_set_waveform_called_times == 1);
