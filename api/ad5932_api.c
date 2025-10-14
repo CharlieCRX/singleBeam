@@ -2,7 +2,7 @@
 #include "../driver/ad5932_driver.h" // 包含驱动层头文件，以便调用 ad5932_write
 #include <stdint.h>
 #include <unistd.h> // 包含usleep函数，用于必要的延时
-#include <cstdio>
+#include <stdio.h>  // 包含标准输入输出函数，例如 FILE
 
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
