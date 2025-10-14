@@ -1,11 +1,23 @@
 # app/CMakeLists.txt
-add_library(app_layer STATIC
-  wavegen_app.c
+add_executable(ad5932_main
+    ad5932_main.c
 )
 
-target_include_directories(app_layer PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../include
-  ${CMAKE_CURRENT_SOURCE_DIR}/../api
+# 链接依赖的静态库（来自其他模块）
+target_link_libraries(ad5932_main
+    PRIVATE
+    api_layer
+    driver_layer
+    protocol_layer
 )
-# 不再在此处链接 api_layer，避免与测试中的mock冲突
+
+# 包含头文件路径（如果这些模块没有全局 install）
+target_include_directories(ad5932_main PRIVATE
+    ${CMAKE_SOURCE_DIR}/api
+    ${CMAKE_SOURCE_DIR}/driver
+    ${CMAKE_SOURCE_DIR}/protocol
+    ${CMAKE_SOURCE_DIR}/common
+)
+
+# 如果使用 usleep / getopt_long 等函数，需要定义 POSIX 宏
+target_compile_definitions(ad5932_main PRIVATE _POSIX_C_SOURCE=200809L)

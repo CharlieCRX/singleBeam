@@ -6,7 +6,7 @@
  * @brief 初始化AD5932驱动
  */
 void ad5932_init(void) {
-    spi_hal_init();
+  spi_hal_init();
 }
 
 /**
