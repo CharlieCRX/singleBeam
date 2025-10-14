@@ -2,6 +2,7 @@
 #include "../driver/ad5932_driver.h" // 包含驱动层头文件，以便调用 ad5932_write
 #include <stdint.h>
 #include <unistd.h> // 包含usleep函数，用于必要的延时
+#include <cstdio>
 
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
@@ -29,7 +30,7 @@ void ad5932_reset(void) {
   ad5932_write(reset_command);
   
   // 添加一个短暂的延时，以确保复位操作完成
-  usleep(10000); 
+  usleep(10000); // 10毫秒
 }
 
 /**
@@ -41,7 +42,7 @@ void ad5932_reset(void) {
  * 2. 使用 switch 语句根据波形类型修改控制字。
  *    - 正弦波：启用 AD5932_CTRL_SINE，禁用 AD5932_CTRL_MSBOUT_EN。
  *    - 三角波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_MSBOUT_EN。
- *    - 方波：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_DAC_EN，启用 AD5932_CTRL_MSBOUT_EN。
+ *    - 方波  ：禁用 AD5932_CTRL_SINE 和 AD5932_CTRL_DAC_EN，启用 AD5932_CTRL_MSBOUT_EN。
  * 3. 将最终的控制字通过 ad5932_write 函数写入芯片。
  *
  * @param wave_type 波形类型(0=正弦波, 1=三角波, 2=方波)
@@ -71,7 +72,7 @@ void ad5932_set_waveform(int wave_type) {
   }
 
   ad5932_write(control);
-  usleep(10000); // 添加一个短暂的延时，以确保设置操作完成
+  usleep(10000); // 10 ms 延时确保设置生效
 }
 
 
@@ -112,7 +113,7 @@ void ad5932_set_delta_frequency(uint32_t delta_freq, bool positive) {
   uint32_t delta_word;
   uint16_t delta_low12, delta_high11;
 
-  // 计算频率递增字: DELTA_WORD = (delta_f * 2^24) / MCLK // todo: 2^23?
+  // 计算频率递增字: DELTA_WORD = (delta_f * 2^24) / MCLK
   delta_word = (uint32_t)((delta_freq * FREQ_WORD_MULTIPLIER) / MCLK_FREQUENCY);
 
   delta_low12  = delta_word & 0x0FFF;         // 低12位
@@ -191,6 +192,14 @@ void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval) {
 }
 
 
+
+// ========== 与引脚相关的操作 ==========
+/**
+ * - `0x10`：CTRL引脚
+   - `0x11`：INTERUPT引脚。只能打断 DAC 输出的模拟波，不能打断 MSBOUT
+   - `0x12`：STANDBY引脚。作为SYNCOUT - STANDBY 关联
+   - `0x13`：输出引脚 SYNCOUT
+ */
 /**
  * @brief INTERRUPT 引脚：终止扫频，恢复初始电平
  */
@@ -200,22 +209,76 @@ void ad5932_interrupt(void){
 
 /**
  * @brief SYNCOUT 引脚：查询是否扫频结束
+ * @return true表示扫频结束，false表示未结束
+ * @note SYNCOUT 引脚在频率递增结束时会拉高，这时对应 STANDBY 引脚也会拉高
+ *      通过 FPGA 读取 STANDBY 引脚状态来判断扫频是否完成
  */
 bool ad5932_is_sweep_done(void) {
-  return true; // TODO: 实际实现需要读取SYNCOUT引脚状态
+  FILE *fp;
+  char buffer[64];
+  int value = -1;
+
+  // 打开命令管道，执行 fpga -r 0x12
+  fp = popen("fpga -r 0x12", "r");
+  if (fp == NULL) {
+    perror("错误: 无法执行命令 fpga -r 0x12");
+    return -1;
+  }
+
+  // 从命令输出中读取一行（已知输出形如 00000000 或 00000001）
+  if (fgets(buffer, sizeof(buffer), fp) != NULL) {
+    // 去掉可能的换行符
+    buffer[strcspn(buffer, "\n")] = '\0';
+
+    // 将读取的字符串转换为整数
+    value = atoi(buffer);
+  } else {
+    perror("错误: 无法读取命令输出");
+  }
+
+  // 关闭命令管道
+  pclose(fp);
+
+  // 根据读取的值判断扫频是否完成
+  if (value > 0) {
+    return true;
+  } else {
+    return false;
+  }
 }
 
 /**
- * @brief CTRL 引脚：触发频率递增
+ * @brief 通过 FPGA 控制 AD5932 CTRL 引脚触发扫频/输出
+ * @note FPGA 寄存器地址 0x10 对应 CTRL 引脚
  */
 void ad5932_start_sweep(void) {
-  // todo
+  // 拉低 CTRL
+  if (system("fpga -w 0x10 0") != 0) {
+    perror("错误: 拉低 CTRL 失败");
+  }
+
+  // 确保 CTRL 有足够脉宽 (~1us-10us)
+  usleep(10000); // 10ms 延迟
+
+  // 拉高 CTRL
+  if (system("fpga -w 0x10 1") != 0) {
+    perror("错误: 拉高 CTRL 失败");
+  }
 }
 
 /**
  * @brief STANDBY 引脚：暂停或恢复输出 + 也可配合 reset 进入低功耗模式
  */
 void ad5932_set_standby(bool enable) {
-  // todo
-  usleep(10000);
+  if (enable) {
+    // 拉高 STANDBY
+    if (system("fpga -w 0x12 1") != 0) {
+      perror("错误: 拉高 STANDBY 失败");
+    }
+  } else {
+    // 拉低 STANDBY
+    if (system("fpga -w 0x12 0") != 0) {
+      perror("错误: 拉低 STANDBY 失败");
+    }
+  }
 }

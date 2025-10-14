@@ -119,6 +119,12 @@ void ad5932_set_increment_interval(int mode, int mclk_mult, uint16_t interval);
 
 
 // ========== 与引脚相关的操作 ==========
+/**
+ * - `0x10`：CTRL引脚
+   - `0x11`：INTERUPT引脚。只能打断 DAC 输出的模拟波，不能打断 MSBOUT
+   - `0x12`：STANDBY引脚。作为SYNCOUT - STANDBY 关联
+   - `0x13`：输出引脚 SYNCOUT
+ */
 
 /**
  * @brief INTERRUPT 引脚：终止扫频，恢复初始电平
