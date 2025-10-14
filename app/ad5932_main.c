@@ -15,9 +15,9 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "用于配置 AD5932 DDS 芯片进行内部自动频率扫描。\n\n");
   fprintf(stderr, "必需选项:\n");
   fprintf(stderr, "  -s, --start-freq <Hz>    起始频率 (Fstart)\n");
-  fprintf(stderr, "  -d, --delta-freq <Hz>    频率递增步长 (Delta F)\n");
-  fprintf(stderr, "  -n, --num-incr <次数>    递增次数 (N_incr, 范围 1~4095)\n");
   fprintf(stderr, "\n可选选项:\n");
+  fprintf(stderr, "  -d, --delta-freq <Hz>    频率递增步长 (Delta F, 默认为 0 时，输出固定频率波形)\n");
+  fprintf(stderr, "  -n, --num-incr <次数>    递增次数 (N_incr, 范围 2~4095, 默认: 2)\n");
   fprintf(stderr, "  -w, --waveform <类型>    输出波形类型 (0=正弦波, 1=三角波, 2=方波, 默认: 0)\n");
   fprintf(stderr, "  -m, --interval-mult <M>  MCLK乘数 (0=1x, 1=5x, 2=100x, 3=500x, 默认: 0)\n");
   fprintf(stderr, "  -i, --interval-val <T>   递增间隔值 T (2-2047, 默认: 2)\n");
@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (start_freq == 0 || delta_freq == 0 || num_incr == 0) {
-    fprintf(stderr, "错误: 必须指定起始频率(-s)、步长(-d)、次数(-n)。\n");
+  if (start_freq == 0) {
+    fprintf(stderr, "错误: 必须指定起始频率(-s)。\n");
     print_usage(argv[0]);
     return EXIT_FAILURE;
   }
@@ -86,6 +86,9 @@ int main(int argc, char *argv[]) {
   printf("波形类型: %d\n", wave_type);
   printf("MCLK倍数: %d\n", mclk_mult);
   printf("间隔参数: %u\n", interval_val);
+  if (delta_freq == 0) {
+    printf("注意: 频率步长为 0，芯片将输出固定频率波形。\n");
+  }
   printf("==============================\n\n");
 
   ad5932_init();
