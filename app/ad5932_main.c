@@ -17,14 +17,24 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "  -s, --start-freq <Hz>    起始频率 (Fstart)\n");
   fprintf(stderr, "\n可选选项:\n");
   fprintf(stderr, "  -d, --delta-freq <Hz>    频率递增步长 (Delta F, 默认为 0 时，输出固定频率波形)\n");
-  fprintf(stderr, "  -n, --num-incr <次数>    递增次数 (N_incr, 范围 2~4095, 默认: 2)\n");
+  fprintf(stderr, "  -n, --num-incr <次数>    频率递增次数 (N_incr, 范围 2~4095, 默认: 2)\n");
   fprintf(stderr, "  -w, --waveform <类型>    输出波形类型 (0=正弦波, 1=三角波, 2=方波, 默认: 0)\n");
   fprintf(stderr, "  -m, --interval-mult <M>  MCLK乘数 (0=1x, 1=5x, 2=100x, 3=500x, 默认: 0)\n");
-  fprintf(stderr, "  -i, --interval-val <T>   递增间隔值 T (2-2047, 默认: 2)\n");
+  fprintf(stderr, "  -i, --interval-val <T>   每个频率的持续周期 T (2-2047, 默认: 2)\n");
   fprintf(stderr, "  -g, --negative           使用负向频率步长 (扫频方向向下)\n");
   fprintf(stderr, "  -h, --help               显示此帮助信息\n");
-  fprintf(stderr, "\n示例:\n");
-  fprintf(stderr, "  %s -s 10000 -d 500 -n 20 -w 0 -i 5\n\n", program_name);
+  fprintf(stderr, "\n扫频示例:\n");
+  fprintf(stderr, "  %s -s 20000 -d 10000 -i 5 -n 2 -w 2\n", program_name);
+  fprintf(stderr, "扫频参数解释:\n");
+  fprintf(stderr, "  -- 扫频参数：开始频率为 20KHz, Δf 为 10KHz, 频率递增 2 次(终止频率为 30KHz)，每个波形持续周期为 5 个周期的方波扫频输出\n");
+  fprintf(stderr, "  -- 结束频率：开始频率 + (n * Δf) = 30KHz\n");
+  fprintf(stderr, "  -- 输出频率个数：频率递增 2 次, 频率输出分别为: 10KHz(起始频率)、20KHz、30KHz。总共输出 3 个不同频率的波形数据，\n");
+  fprintf(stderr, "  -- 总波形数量：  3 个波形数据 × 每个波形持续 5 个周期 = 15 个\n");
+  fprintf(stderr, "\n输出固定频率示例:\n");
+  fprintf(stderr, "  %s -s 20000 -i 5 -n 2 -w 2\n", program_name);
+  fprintf(stderr, "  -- 由于未指定 Δf，默认为 0，因此芯片将输出固定频率波形，频率为 20KHz，每个波形持续周期为 5 个周期的方波输出\n");
+  fprintf(stderr, "  -- 总波形数量: 频率递增2次(n=2), 所以输出同频率波形共 3 次，每次持续 5 个周期, 共 3 × 5 = 15 个  \n");
+  fprintf(stderr, "  -- [注意]总波形数量 = (n + 1) × i\n\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -85,7 +95,7 @@ int main(int argc, char *argv[]) {
   printf("最终频率: %u Hz\n", final_freq);
   printf("波形类型: %d\n", wave_type);
   printf("MCLK倍数: %d\n", mclk_mult);
-  printf("间隔参数: %u\n", interval_val);
+  printf("间隔参数: %u（每个频率的持续周期）\n", interval_val);
   if (delta_freq == 0) {
     printf("注意: 频率步长为 0，芯片将输出固定频率波形。\n");
   }
@@ -111,7 +121,7 @@ int main(int argc, char *argv[]) {
 
   printf("扫频结束，准备复位。\n");
   ad5932_reset();
-  ad5932_set_standby(false); // 退出待机，恢复初始状态
+  ad5932_set_standby(false);
 
   printf("测试完成，SPI 已关闭。\n");
 

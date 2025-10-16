@@ -210,7 +210,7 @@ void ad5932_interrupt(void){
 }
 
 /**
- * @brief SYNCOUT 引脚：查询是否扫频结束
+ * @brief STANDBY 引脚：查询是否扫频结束
  * @return true表示扫频结束，false表示未结束
  * @note SYNCOUT 引脚在频率递增结束时会拉高，这时对应 STANDBY 引脚也会拉高
  *      通过 FPGA 读取 STANDBY 引脚状态来判断扫频是否完成
