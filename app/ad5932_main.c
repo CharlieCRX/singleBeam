@@ -6,9 +6,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 
-
-#include "../driver/ad5932_driver.h"
-#include "../api/ad5932_api.h"
+#include "../dev/ad5932.h"
 
 void print_usage(const char *program_name) {
   fprintf(stderr, "\n用法: %s [选项]\n", program_name);

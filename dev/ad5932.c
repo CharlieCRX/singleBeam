@@ -1,17 +1,39 @@
-#include "ad5932_api.h"
-#include "../driver/ad5932_driver.h" // 包含驱动层头文件，以便调用 ad5932_write
+#include "ad5932.h"
+#include "../protocol/spi_hal.h"
 #include <stdint.h>
 #include <unistd.h>  // 包含usleep函数，用于必要的延时
 #include <stdio.h>   // 包含标准输入输出函数，例如 FILE
 #include <stdlib.h>  // 包含标准库函数，例如 system
 #include <string.h>  // 包含字符串处理函数，例如 strcmp
 #include <stdbool.h> // 包含布尔类型定义
-
+#include <stdint.h>
 // 计算频率字的乘数因子 (2^24)
 #define FREQ_WORD_MULTIPLIER 16777216.0 // 2^24
 
 #define DELTAF_WORD_MULTIPLIER 8388608.0 // 2^23
 
+
+/**
+ * @brief 初始化AD5932驱动
+ */
+void ad5932_init(void) {
+  spi_hal_init();
+}
+
+/**
+ * @brief 将16位数据写入AD5932寄存器。
+ * @param data 要写入的16位数据。
+ */
+void ad5932_write(uint16_t data) {
+  uint8_t tx_buf[2];
+
+  // 将16位数据拆分为两个8位字节（高位在前）
+  tx_buf[0] = (data >> 8) & 0xFF; // MSB
+  tx_buf[1] = data & 0xFF;        // LSB
+
+  // 调用协议层的SPI写入函数
+  spi_hal_write(tx_buf, 2);
+}
 
 /**
  * @brief 软复位AD5932芯片。

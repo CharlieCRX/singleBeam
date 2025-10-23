@@ -65,6 +65,19 @@
 #define AD5932_CTRL_BASE   (AD5932_CTRL_RSVD7 | AD5932_CTRL_RSVD6 | \
               AD5932_CTRL_RSVD4 | AD5932_CTRL_RSVD1 | AD5932_CTRL_RSVD0)
 
+
+/**
+ * @brief 将16位数据写入AD5932寄存器。
+ * @param data 要写入的16位数据。
+ */
+void ad5932_write(uint16_t data);
+
+/**
+ * @brief 初始化AD5932驱动
+ */
+void ad5932_init(void);
+
+
 /**
  * @brief 软复位AD5932芯片。
  *
