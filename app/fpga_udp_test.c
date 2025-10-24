@@ -102,22 +102,24 @@ void user_packet_printer(const uint8_t *buffer, int length) {
 static void signal_handler(int sig) {
   printf("\n收到停止信号，关闭监听...\n");
   net_listener_stop("eth0");
+
+  printf("停止FPGA数据采集...\n");
   fpga_set_acq_enable(false);
   printf("监听已停止，程序退出。\n");
 }
 
 int main() {
   S_udp_header_params params = {
-  .dst_mac_high = 0xb07b,
-  .dst_mac_low  = 0x2500c019, // b0:7b:25:00:c0:19
-  .src_mac_high = 0x0043,
-  .src_mac_low  = 0x4d494e40, // 00:43:4D:49:4E:40
-  .src_ip     = 0xa9fe972f, // 169.254.151.47
-  .dst_ip     = 0xc0a80105, // 192.168.1.5
-  .src_port   = 5000,
-  .dst_port   = 5030,
-  .ip_total_len = 0x041c, // 不生效
-  .udp_data_len = 0x408
+    .dst_mac_high = 0xb07b,
+    .dst_mac_low  = 0x2500c019, // b0:7b:25:00:c0:19
+    .src_mac_high = 0x0043,
+    .src_mac_low  = 0x4d494e40, // 00:43:4D:49:4E:40
+    .src_ip     = 0xa9fe972f, // 169.254.151.47
+    .dst_ip     = 0xc0a80105, // 192.168.1.5
+    .src_port   = 5000,
+    .dst_port   = 5030,
+    .ip_total_len = 0x041c, // 不生效
+    .udp_data_len = 0x408
   };
 
   // 注册 Ctrl+C 退出
@@ -133,8 +135,8 @@ int main() {
 
   // 3. 启动网络监听
   if (net_listener_start("eth0", user_packet_printer) < 0) {
-  printf("[主程序] 网络监听启动失败。\n");
-  return -1;
+    printf("[主程序] 网络监听启动失败。\n");
+    return -1;
   }
   printf("[主程序] 网络监听已启动，按 Ctrl+C 停止。\n");
 
@@ -144,7 +146,7 @@ int main() {
 
   // 主循环
   while (net_listener_is_running()) {
-  sleep(1);
+    sleep(1);
   }
 
   printf("[主程序] 已退出监听。\n");
