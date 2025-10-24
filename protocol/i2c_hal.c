@@ -78,12 +78,12 @@ int i2c_hal_read_reg16(uint8_t dev_addr, uint8_t reg_addr, uint16_t *value) {
 
 /**
  * @brief 向I2C设备写32位寄存器（FPGA专用）
- * @param dev_addr I2C设备地址
+ * @param fpga_addr I2C设备地址
  * @param reg_addr 16位寄存器地址
  * @param val 32位数据
  * @return 成功返回0，失败返回-1
  */
-int i2c_hal_fpga_write(uint8_t dev_addr, uint16_t reg_addr, uint32_t val)
+int i2c_hal_fpga_write(uint8_t fpga_addr, uint16_t reg_addr, uint32_t val)
 {
   uint8_t buf[6];
   struct i2c_msg msg;
@@ -96,7 +96,7 @@ int i2c_hal_fpga_write(uint8_t dev_addr, uint16_t reg_addr, uint32_t val)
   buf[4] = (uint8_t)((val >> 8) & 0xFF);
   buf[5] = (uint8_t)(val & 0xFF);
 
-  msg.addr  = dev_addr;
+  msg.addr  = fpga_addr;
   msg.flags = 0;
   msg.len   = sizeof(buf);
   msg.buf   = buf;
@@ -110,12 +110,12 @@ int i2c_hal_fpga_write(uint8_t dev_addr, uint16_t reg_addr, uint32_t val)
 
 /**
  * @brief 从I2C设备读取32位寄存器（FPGA专用）
- * @param dev_addr I2C设备地址
+ * @param fpga_addr I2C设备地址
  * @param reg_addr 16位寄存器地址
  * @param val 指向存储32位数据的指针
  * @return 成功返回0，失败返回-1
  */
-int i2c_hal_fpga_read(uint8_t dev_addr, uint16_t reg_addr, uint32_t *val)
+int i2c_hal_fpga_read(uint8_t fpga_addr, uint16_t reg_addr, uint32_t *val)
 {
   uint8_t buf[2];
   struct i2c_msg msgs[2];
@@ -124,12 +124,12 @@ int i2c_hal_fpga_read(uint8_t dev_addr, uint16_t reg_addr, uint32_t *val)
   buf[0] = (uint8_t)((reg_addr >> 8) & 0xFF) | 0x80; // 高位标记读
   buf[1] = (uint8_t)(reg_addr & 0xFF);
 
-  msgs[0].addr  = dev_addr;
+  msgs[0].addr  = fpga_addr;
   msgs[0].flags = 0;
   msgs[0].len   = sizeof(buf);
   msgs[0].buf   = buf;
 
-  msgs[1].addr  = dev_addr;
+  msgs[1].addr  = fpga_addr;
   msgs[1].flags = I2C_M_RD;
   msgs[1].len   = sizeof(uint32_t);
   msgs[1].buf   = (uint8_t*)val;
