@@ -7,6 +7,7 @@
 #include <linux/i2c-dev.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
 
 static int i2c_fd = -1;
 
@@ -75,9 +76,54 @@ int i2c_hal_read_reg16(uint8_t dev_addr, uint8_t reg_addr, uint16_t *value) {
   return 0;
 }
 
+/**
+ * @brief 向FPGA设备写4字节寄存器（FPGA专用）
+ *
+ * @param fpga_addr I2C设备地址
+ * @param reg_addr 16位寄存器地址
+ * @param val 指向4字节数据的指针
+ * @return 成功返回0，失败返回-1
+ */
+int fpga_reg_write_4Bytes(uint8_t fpga_addr, int16_t reg_addr, uint8_t* val) {
+  uint8_t buf[6] = {0};
+	struct i2c_rdwr_ioctl_data data;
+	struct i2c_msg msg;
+  struct timeval _time_start_;
+  struct timeval _time_end_; 
+	int64_t timespace = 0;
+
+  gettimeofday(&_time_start_,NULL);
+  
+	buf[0] = (uint8_t)((reg_addr>>8)&0x00FF); 
+	buf[1] = (uint8_t)((reg_addr)&0x00FF);
+	
+	memcpy(buf+2, val, 4);
+	
+	msg.addr = (uint8_t)fpga_addr;
+	msg.flags = 0; 
+	msg.len = (uint8_t)sizeof(buf);
+	msg.buf = (char *)buf;
+	
+	data.msgs = &msg;
+	data.nmsgs = 1;
+
+	if(ioctl(i2c_fd, I2C_RDWR, &data)<0){
+		perror("ioctl i2c-w:");
+    printf("I2C ioctl write failed\n");
+		return -1;
+	}
+
+  gettimeofday(&_time_end_,NULL);
+  timespace = (_time_end_.tv_sec - _time_start_.tv_sec)*1000000 + _time_end_.tv_usec - _time_start_.tv_usec;
+  if(timespace>(int64_t)100000){
+    printf("reg(0x%x) write slowly! timeuse=%lld us", reg_addr, timespace);
+  }
+
+	return 0;
+}
 
 /**
- * @brief 向I2C设备写32位寄存器（FPGA专用）
+ * @brief 向FPGA设备写32位寄存器（FPGA专用）
  * @param fpga_addr I2C设备地址
  * @param reg_addr 16位寄存器地址
  * @param val 32位数据
@@ -109,7 +155,7 @@ int i2c_hal_fpga_write(uint8_t fpga_addr, uint16_t reg_addr, uint32_t val)
 
 
 /**
- * @brief 从I2C设备读取32位寄存器（FPGA专用）
+ * @brief 从FPGA设备读取32位寄存器（FPGA专用）
  * @param fpga_addr I2C设备地址
  * @param reg_addr 16位寄存器地址
  * @param val 指向存储32位数据的指针

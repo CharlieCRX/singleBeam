@@ -30,6 +30,15 @@ int i2c_hal_write_reg16(uint8_t dev_addr, uint8_t reg_addr, uint16_t value);
 int i2c_hal_read_reg16(uint8_t dev_addr, uint8_t reg_addr, uint16_t *value);
 
 
+/**
+ * @brief 向FPGA设备写4字节寄存器（FPGA专用）
+ *
+ * @param fpga_addr FPGA设备地址
+ * @param reg_addr 16位寄存器地址
+ * @param val 指向4字节数据的指针
+ * @return 成功返回0，失败返回-1
+ */
+int fpga_reg_write_4Bytes(uint8_t fpga_addr, int16_t reg_addr, uint8_t* val);
 
 /**
  * @brief 向FPGA设备写32位寄存器（FPGA专用）
