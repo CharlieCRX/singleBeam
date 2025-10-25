@@ -19,6 +19,7 @@
 
 // 外部参考电压值（单位：伏）
 #define DAC63001_EXT_REF_VOLTAGE         1.25f
+#define DAC63001_CODE_MAX                4096  // 12位DAC最大代码值
 
 // 波形类型
 typedef enum {
@@ -86,9 +87,13 @@ int dac63001_set_fixed_voltage(float voltage);
 int dac63001_setup_sawtooth_wave(float min_voltage, float max_voltage, 
                                 dac63001_code_step_t code_step, 
                                 dac63001_slew_rate_t slew_rate);
+/**
+ * @brief 开始DAC函数生成
+ */
+int dac63001_start_waveform(void);
 
 /**
- * @brief 停止函数生成
+ * @brief 停止DAC函数生成
  */
 int dac63001_stop_waveform(void);
 
@@ -96,5 +101,45 @@ int dac63001_stop_waveform(void);
  * @brief 关闭DAC63001驱动
  */
 void dac63001_close(void);
+
+// ===== AD8338 增益控制相关 =====
+
+// AD8338 增益控制参数（修正）
+#define AD8338_GAIN_MIN_DB      0      // 最小增益 0dB
+#define AD8338_GAIN_MAX_DB      80     // 最大增益 80dB
+#define AD8338_VGAIN_MIN_V      1.1f   // 最小增益对应电压 1.1V
+#define AD8338_VGAIN_MAX_V      0.1f   // 最大增益对应电压 0.1V
+
+// 根据具体电阻值计算的增益偏移
+#define AD8338_R_FEEDBACK       9500.0f  // 反馈电阻 9500Ω
+#define AD8338_R_N              500.0f   // 输入电阻 500Ω
+
+/**
+ * @brief 设置AD8338增益扫描
+ * @param start_gain 起始增益 (0-80 dB)
+ * @param end_gain 结束增益 (0-80 dB)  
+ * @param gain_duration_us 增益变化持续时间 (微秒，最大5秒)
+ */
+int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gain_duration_us);
+
+/**
+ * @brief 增益值转换为电压值（使用具体电阻值）
+ * @param gain_dB 增益值 (dB)
+ * @return 对应的控制电压 (V)
+ */
+float ad8338_gain_to_voltage(uint16_t gain_dB);
+
+/**
+ * @brief 电压值转换为增益值（使用具体电阻值）
+ * @param voltage 控制电压 (V)
+ * @return 对应的增益值 (dB)
+ */
+uint16_t ad8338_voltage_to_gain(float voltage);
+
+/**
+ * @brief 计算电阻比值对应的增益偏移
+ * @return 增益偏移值 (dB)
+ */
+float calculate_gain_offset(void);
 
 #endif // DAC63001_H

@@ -12,6 +12,11 @@
 static int i2c_fd = -1;
 
 int i2c_hal_init(const char* i2c_bus) {
+  if (i2c_fd >= 0) {
+    // 已初始化
+    return 0;
+  }
+  
   i2c_fd = open(i2c_bus, O_RDWR);
   if (i2c_fd < 0) {
     perror("无法打开I2C设备");
