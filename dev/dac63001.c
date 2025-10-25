@@ -218,7 +218,7 @@ uint16_t ad8338_voltage_to_gain(float voltage) {
 }
 
 // 根据持续时间计算最佳参数
-void calculate_sweep_parameters(uint32_t duration_us, float voltage_range, 
+void calculate_sweep_parameters1(uint32_t duration_us, float voltage_range, 
                  dac63001_code_step_t* code_step, 
                  dac63001_slew_rate_t* slew_rate) {
   // 计算需要的总步数 (12位DAC，4096个代码点)
@@ -262,6 +262,83 @@ void calculate_sweep_parameters(uint32_t duration_us, float voltage_range,
   printf("选择参数: slew_rate=%d(%.2fus/步), code_step=%d(%dLSB/步)\n", 
        *slew_rate, slew_times[*slew_rate], *code_step, code_steps[*code_step]);
 }
+
+// 更精准的扫描参数计算，找到最接近目标持续时间的参数组合
+void calculate_sweep_parameters(uint32_t target_duration_us, float voltage_range, 
+         dac63001_code_step_t* best_code_step, 
+         dac63001_slew_rate_t* best_slew_rate) {
+  
+  // 计算电压范围对应的代码范围
+  uint16_t min_code = voltage_to_dac_code(0, DAC63001_EXT_REF_VOLTAGE) >> 4;
+  uint16_t max_code = voltage_to_dac_code(voltage_range, DAC63001_EXT_REF_VOLTAGE) >> 4;
+  uint16_t code_range = abs(max_code - min_code);
+  
+  if (code_range < 1) code_range = 1;
+  
+  printf("扫描参数优化: 电压范围=%.3fV, 代码范围=%d LSB, 目标时间=%uus\n", 
+       voltage_range, code_range, target_duration_us);
+  
+  float best_error = 1e9; // 初始化为很大的值
+  uint32_t best_duration = 0;
+  
+  // 遍历所有可能的参数组合
+  for (int slew_idx = 0; slew_idx < 16; slew_idx++) {
+    for (int step_idx = 0; step_idx < 8; step_idx++) {
+      float step_time_us = slew_times[slew_idx];
+      uint16_t step_size = code_steps[step_idx];
+      
+      // 计算步数（向上取整）
+      uint32_t num_steps = (code_range + step_size - 1) / step_size;
+      if (num_steps < 1) num_steps = 1;
+      
+      // 计算总持续时间
+      uint32_t total_duration_us = (uint32_t)(num_steps * step_time_us);
+      
+      // 计算与目标时间的误差（百分比）
+      float error;
+      if (total_duration_us > target_duration_us) {
+        // 超过目标时间，给予更大惩罚
+        error = (float)(total_duration_us - target_duration_us) / target_duration_us * 100.0f;
+      } else {
+        // 小于目标时间，正常计算误差
+        error = (float)(target_duration_us - total_duration_us) / target_duration_us * 100.0f;
+      }
+      
+      // 如果找到更好的参数组合
+      if (error < best_error) {
+        best_error = error;
+        best_duration = total_duration_us;
+        *best_slew_rate = (dac63001_slew_rate_t)slew_idx;
+        *best_code_step = (dac63001_code_step_t)step_idx;
+      }
+      
+      // 调试信息：显示所有可能的组合
+      // printf("  Slew=%d(%.1fus) Step=%d(%dLSB) -> %uus (误差: %.1f%%)\n", 
+          //  slew_idx, step_time_us, step_idx, step_size, total_duration_us, error);
+    }
+  }
+  
+  // 计算最佳组合的实际参数
+  float best_step_time = slew_times[*best_slew_rate];
+  uint16_t best_step_size = code_steps[*best_code_step];
+  uint32_t actual_steps = (code_range + best_step_size - 1) / best_step_size;
+  
+  printf("\n最佳参数组合:\n");
+  printf("  Slew Rate: %d (%.1f us/步)\n", *best_slew_rate, best_step_time);
+  printf("  Code Step: %d (%d LSB/步)\n", *best_code_step, best_step_size);
+  printf("  总步数: %u 步\n", actual_steps);
+  printf("  实际持续时间: %u us (目标: %u us)\n", best_duration, target_duration_us);
+  printf("  误差: %.2f%%\n", best_error);
+  
+  // 计算实际频率信息
+  float period_sec = best_duration / 1000000.0f;
+  float frequency = 1.0f / period_sec;
+  printf("  扫描周期: %.6f 秒, 频率: %.3f Hz\n", period_sec, frequency);
+}
+
+
+
+
 
 // 设置增益扫描（使用具体电阻值）
 int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gain_duration_us) {
