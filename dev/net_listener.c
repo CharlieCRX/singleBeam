@@ -1,4 +1,5 @@
 #include "net_listener.h"
+#include "../utils/log.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -139,7 +140,7 @@ int net_listener_start(const char *ifname, NetPacketCallback cb) {
     return -1;
   }
 
-  printf("[net_listener] Started on %s\n", ifname);
+  LOG_INFO("[net_listener] Started on %s\n", ifname);
   return 0;
 }
 
@@ -151,7 +152,7 @@ void net_listener_stop(const char *ifname) {
   set_promisc_mode(ifname, sockfd, 0);
   close(sockfd);
   sockfd = -1;
-  printf("[net_listener] Stopped\n");
+  LOG_INFO("[net_listener] Stopped\n");
 }
 
 int net_listener_is_running(void) {

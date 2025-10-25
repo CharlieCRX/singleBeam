@@ -1,5 +1,6 @@
 #include "fpga.h"
 #include "../protocol/i2c_hal.h"
+#include "../utils/log.h"
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdio.h>
@@ -142,7 +143,7 @@ void fpga_release_soft_reset(void) {
  */
 int fpga_initialize_udp_header(S_udp_header_params *params) {
   if (params == NULL) {
-    printf("Input parameters pointer is NULL.\n");
+    LOG_ERROR("Input parameters pointer is NULL.\n");
     return -1;
   }
 
@@ -170,7 +171,7 @@ int fpga_initialize_udp_header(S_udp_header_params *params) {
   // 高2字节
   memcpy(pkg_hdr.eth.src_mac, (unsigned char*)&tmp_src_h, 2);
 
-  printf("Configured MAC addresses - DST: %02X:%02X:%02X:%02X:%02X:%02X, SRC: %02X:%02X:%02X:%02X:%02X:%02X\n",
+  LOG_INFO("Configured MAC addresses - DST: %02X:%02X:%02X:%02X:%02X:%02X, SRC: %02X:%02X:%02X:%02X:%02X:%02X\n",
            pkg_hdr.eth.dst_mac[0], pkg_hdr.eth.dst_mac[1], pkg_hdr.eth.dst_mac[2],
            pkg_hdr.eth.dst_mac[3], pkg_hdr.eth.dst_mac[4], pkg_hdr.eth.dst_mac[5],
            pkg_hdr.eth.src_mac[0], pkg_hdr.eth.src_mac[1], pkg_hdr.eth.src_mac[2],
@@ -208,29 +209,29 @@ int fpga_initialize_udp_header(S_udp_header_params *params) {
 
 
   // --- 5. 打印配置信息 ---
-  printf("Configured IP addresses - SRC: %s (0x%08X), DST: %s (0x%08X)\n", 
+  LOG_INFO("Configured IP addresses - SRC: %s (0x%08X), DST: %s (0x%08X)\n", 
            inet_ntoa((struct in_addr){.s_addr = pkg_hdr.ip.src_ip}), 
            ntohl(pkg_hdr.ip.src_ip),
            inet_ntoa((struct in_addr){.s_addr = pkg_hdr.ip.dst_ip}), 
            ntohl(pkg_hdr.ip.dst_ip));
-  printf("Configured ports - SRC: %u, DST: %u\n", 
+  LOG_INFO("Configured ports - SRC: %u, DST: %u\n", 
            ntohs(pkg_hdr.udp.sport), ntohs(pkg_hdr.udp.dport));
-  printf("IP packet length: %u, UDP total length: %u\n", 
+  LOG_INFO("IP packet length: %u, UDP total length: %u\n", 
            ntohs(pkg_hdr.ip.pkt_len), ntohs(pkg_hdr.udp.pktlen));
 
   // 打印结构体大小和偏移量 (用于验证对齐)
-  printf(" &pkg_hdr.pad - &pkg_hdr.eth = %zu bytes\n", 
+  LOG_INFO(" &pkg_hdr.pad - &pkg_hdr.eth = %zu bytes\n", 
          (size_t)((uint8_t*)&pkg_hdr.pad - (uint8_t*)&pkg_hdr.eth));
-  printf(" Total header size = %zu bytes\n", sizeof(U_pkg_hdr));
+  LOG_INFO(" Total header size = %zu bytes\n", sizeof(U_pkg_hdr));
   ipcsum(&pkg_hdr.ip);
 
 
   // --- 6. 写入FPGA寄存器 ---
-  printf("Writing UDP header to FPGA registers (base address: 0x%04X)\n", REG_UDP_HDR_0);
+  LOG_INFO("Writing UDP header to FPGA registers (base address: 0x%04X)\n", REG_UDP_HDR_0);
   
   // 头部总长度以4字节对齐写入
   size_t header_dword_count = sizeof(U_pkg_hdr) / 4;
-  printf("Total header dwords to write: %zu\n", header_dword_count);
+  LOG_INFO("Total header dwords to write: %zu\n", header_dword_count);
   for(size_t i = 0; i < header_dword_count; i++) {
     uint32_t write_data = *(uint32_t*)&pkg_hdr.data[i * 4];
     uint32_t read_back = 0;
@@ -239,9 +240,9 @@ int fpga_initialize_udp_header(S_udp_header_params *params) {
     fpga_reg_write_4Bytes(FPGA_I2C_SLAVE, addr, &pkg_hdr.data[i * 4]);
     i2c_hal_fpga_read(FPGA_I2C_SLAVE, addr, &read_back);
     
-    printf("index=%zu write=0x%08x readbk=0x%08x addr = 0x%02x\n", i, write_data, read_back, (REG_UDP_HDR_0 + i));
+    LOG_INFO("index=%zu write=0x%08x readbk=0x%08x addr = 0x%02x\n", i, write_data, read_back, (REG_UDP_HDR_0 + i));
   }
   
-  printf("FPGA UDP header initialization completed successfully\n");
+  LOG_INFO("FPGA UDP header initialization completed successfully\n");
   return 0;
 }
