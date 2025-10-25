@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     dac63001_close();
     return 1;
   }
-  
+
   if (dac63001_set_gain_sweep(start_gain, end_gain, duration_us) < 0) {
     fprintf(stderr, "错误: 增益扫描设置失败\n");
     dac63001_close();
@@ -135,9 +135,9 @@ int main(int argc, char* argv[]) {
   dac63001_stop_waveform();
   
   // 设置到结束增益的固定电压
-  dac63001_set_fixed_voltage(end_voltage);
+  dac63001_set_fixed_voltage(AD8338_VGAIN_MIN_V);
   
-  printf("已停止，当前增益: %d dB (%.3fV)\n", end_gain, end_voltage);
+  printf("已停止，当前增益: 0 dB (%.3fV)\n", AD8338_VGAIN_MIN_V);
   
   dac63001_close();
   return 0;

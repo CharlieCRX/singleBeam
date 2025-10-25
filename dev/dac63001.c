@@ -83,7 +83,8 @@ int dac63001_setup_sawtooth_wave(float min_voltage, float max_voltage,
   
   printf("配置反向锯齿波生成\n");
   printf("电压范围: %.3fV 到 %.3fV\n", min_voltage, max_voltage);
-  
+  printf("代码步长: %d (%d LSB)\n", code_step, code_steps[code_step]);
+  printf("Slew rate: %d (%f us)/step\n", slew_rate, slew_times[slew_rate]);
   // 停止函数生成
   ret = dac63001_stop_waveform();
   if (ret < 0) return ret;
@@ -264,8 +265,8 @@ void calculate_sweep_parameters(uint32_t duration_us, float voltage_range,
 
 // 设置增益扫描（使用具体电阻值）
 int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gain_duration_us) {
-  if (start_gain == end_gain) {
-    fprintf(stderr, "错误: 起始增益和结束增益不能相同\n");
+  if (start_gain >= end_gain) {
+    fprintf(stderr, "错误: 起始增益要小于结束增益\n");
     return -1;
   }
 
@@ -303,26 +304,14 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
   float voltage_range = fabsf(end_voltage - start_voltage);
   dac63001_code_step_t code_step;
   dac63001_slew_rate_t slew_rate;
-  
   calculate_sweep_parameters(gain_duration_us, voltage_range, &code_step, &slew_rate);
   
-  // 设置锯齿波
-  // 注意: 反向锯齿波是从高电压到低电压
-  // 由于最大增益对应最小电压(0.1V)，最小增益对应最大电压(1.1V)
-  // 所以增益增加对应电压减小，增益减少对应电压增加
-  
   float min_voltage, max_voltage;
-  if (start_gain < end_gain) {
-    // 增益增加：电压从高到低
-    max_voltage = start_voltage;  // 起始电压（高电压，低增益）
-    min_voltage = end_voltage;  // 结束电压（低电压，高增益）
-    printf("增益增加模式: 电压从 %.3fV -> %.3fV\n", max_voltage, min_voltage);
-  } else {
-    // 增益减少：电压从低到高
-    min_voltage = start_voltage;  // 起始电压（低电压，高增益）
-    max_voltage = end_voltage;  // 结束电压（高电压，低增益）
-    printf("增益减少模式: 电压从 %.3fV -> %.3fV\n", min_voltage, max_voltage);
-  }
+
+  // 增益增加：电压从高到低
+  max_voltage = start_voltage;  // 起始电压（高电压，低增益）
+  min_voltage = end_voltage;    // 结束电压（低电压，高增益）
+  printf("增益增加模式: 电压从 %.3fV -> %.3fV\n", max_voltage, min_voltage);
   
   // 配置锯齿波（反向锯齿波从MARGIN_HIGH到MARGIN_LOW）
   ret = dac63001_setup_sawtooth_wave(min_voltage, max_voltage, code_step, slew_rate);
@@ -330,21 +319,6 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
     fprintf(stderr, "错误: 锯齿波配置失败\n");
     return ret;
   }
-  
-  // 计算实际频率和周期
-  uint16_t min_code = voltage_to_dac_code(min_voltage, DAC63001_EXT_REF_VOLTAGE);
-  uint16_t max_code = voltage_to_dac_code(max_voltage, DAC63001_EXT_REF_VOLTAGE);
-  uint16_t code_range = abs(max_code - min_code) + 1;
-  
-  float step_time = slew_times[slew_rate] / 1000000.0f;
-  uint16_t actual_step = code_steps[code_step];
-  
-  float period = step_time * (code_range / actual_step);
-  float frequency = 1.0f / period;
-  
-  printf("实际扫描参数: 频率=%.2f Hz, 周期=%.6f 秒\n", frequency, period);
-  printf("单次扫描时间: %.3f 秒\n", period);
-  printf("注意: 最大增益(80dB)对应0.1V，最小增益(0dB)对应1.1V\n");
   
   return 0;
 }
