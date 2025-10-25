@@ -166,45 +166,49 @@ float calculate_gain_offset(void) {
 }
 
 // 增益到电压的转换（使用具体电阻值）
+// 增益到电压的转换（反比例关系）
 float ad8338_gain_to_voltage(uint16_t gain_dB) {
   if (gain_dB > AD8338_GAIN_MAX_DB) {
-    gain_dB = AD8338_GAIN_MAX_DB;
+      gain_dB = AD8338_GAIN_MAX_DB;
   }
   
   // 计算增益偏移
   float gain_offset = calculate_gain_offset();
   
-  // 根据公式(6)反向计算：V_GAIN = (Gain - 20log(R_F/R_N) + 26) / 80 + 0.1
-  // 简化：V_GAIN = (Gain - gain_offset) / 80 + 0.1
-  float voltage = ((float)gain_dB - gain_offset) / 80.0f + 0.1f;
+  // 反比例关系：增益越大，电压越小
+  // 使用公式：V_GAIN = 1.1 - (Gain - gain_offset) / 80 * (1.1 - 0.1)
+  float voltage_range = AD8338_VGAIN_MIN_V - AD8338_VGAIN_MAX_V; // 1.1 - 0.1 = 1.0
+  float voltage = AD8338_VGAIN_MIN_V - ((float)gain_dB - gain_offset) / 80.0f * voltage_range;
   
   // 确保电压在有效范围内
-  if (voltage < AD8338_VGAIN_MAX_V) {  // 注意：最大增益对应最小电压
-    voltage = AD8338_VGAIN_MAX_V;
+  if (voltage < AD8338_VGAIN_MAX_V) {  // 最小电压是0.1V
+      voltage = AD8338_VGAIN_MAX_V;
   }
-  if (voltage > AD8338_VGAIN_MIN_V) {  // 最小增益对应最大电压
-    voltage = AD8338_VGAIN_MIN_V;
+  if (voltage > AD8338_VGAIN_MIN_V) {  // 最大电压是1.1V
+      voltage = AD8338_VGAIN_MIN_V;
   }
   
   return voltage;
 }
 
 // 电压到增益的转换（使用具体电阻值）
+// 电压到增益的转换（反比例关系）
 uint16_t ad8338_voltage_to_gain(float voltage) {
   // 确保电压在有效范围内
   if (voltage < AD8338_VGAIN_MAX_V) {
-    voltage = AD8338_VGAIN_MAX_V;
+      voltage = AD8338_VGAIN_MAX_V;
   }
   if (voltage > AD8338_VGAIN_MIN_V) {
-    voltage = AD8338_VGAIN_MIN_V;
+      voltage = AD8338_VGAIN_MIN_V;
   }
   
   // 计算增益偏移
   float gain_offset = calculate_gain_offset();
   
-  // 根据公式(6)：Gain = (V_GAIN - 0.1) × 80 + 20log(R_F/R_N) - 26
-  // 简化：Gain = (V_GAIN - 0.1) × 80 + gain_offset
-  float gain = (voltage - 0.1f) * 80.0f + gain_offset;
+  // 反比例关系：电压越小，增益越大
+  // 使用公式：Gain = (1.1 - V_GAIN) / (1.1 - 0.1) * 80 + gain_offset
+  float voltage_range = AD8338_VGAIN_MIN_V - AD8338_VGAIN_MAX_V; // 1.1 - 0.1 = 1.0
+  float gain = (AD8338_VGAIN_MIN_V - voltage) / voltage_range * 80.0f + gain_offset;
   
   if (gain < 0) gain = 0;
   if (gain > AD8338_GAIN_MAX_DB) gain = AD8338_GAIN_MAX_DB;
@@ -260,6 +264,11 @@ void calculate_sweep_parameters(uint32_t duration_us, float voltage_range,
 
 // 设置增益扫描（使用具体电阻值）
 int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gain_duration_us) {
+  if (start_gain == end_gain) {
+    fprintf(stderr, "错误: 起始增益和结束增益不能相同\n");
+    return -1;
+  }
+
   int ret;
   
   printf("设置增益扫描: %ddB -> %ddB, 持续时间: %uus\n", 
@@ -289,12 +298,6 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
   printf("验证: %.3fV = %ddB, %.3fV = %ddB\n", 
        start_voltage, ad8338_voltage_to_gain(start_voltage),
        end_voltage, ad8338_voltage_to_gain(end_voltage));
-  
-  // 如果起始和结束增益相同，设置固定电压
-  if (start_gain == end_gain) {
-    printf("起始和结束增益相同，设置固定电压\n");
-    return dac63001_set_fixed_voltage(start_voltage);
-  }
   
   // 计算扫描参数
   float voltage_range = fabsf(end_voltage - start_voltage);

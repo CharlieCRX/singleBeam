@@ -105,6 +105,15 @@ int main(int argc, char* argv[]) {
   }
   
   // 设置增益扫描
+  if (start_gain == end_gain) {
+    float voltage = ad8338_gain_to_voltage(start_gain);
+    printf("起始和结束增益相同，设置固定电压 %.3fV\n", start_voltage);
+    dac63001_set_fixed_voltage(start_voltage);
+    printf("当前增益: %d dB (%.3fV)\n", start_gain, start_voltage);
+    dac63001_close();
+    return 1;
+  }
+  
   if (dac63001_set_gain_sweep(start_gain, end_gain, duration_us) < 0) {
     fprintf(stderr, "错误: 增益扫描设置失败\n");
     dac63001_close();

@@ -103,12 +103,12 @@ int dac63001_stop_waveform(void);
 void dac63001_close(void);
 
 // ===== AD8338 增益控制相关 =====
-
-// AD8338 增益控制参数（修正）
+// AD8338 增益控制参数
 #define AD8338_GAIN_MIN_DB      0      // 最小增益 0dB
 #define AD8338_GAIN_MAX_DB      80     // 最大增益 80dB
-#define AD8338_VGAIN_MIN_V      1.1f   // 最小增益对应电压 1.1V
-#define AD8338_VGAIN_MAX_V      0.1f   // 最大增益对应电压 0.1V
+
+#define AD8338_VGAIN_MIN_V      1.1f   // 最小增益对应的电压（0dB -> 1.1V）
+#define AD8338_VGAIN_MAX_V      0.1f   // 最大增益对应的电压（80dB -> 0.1V）
 
 // 根据具体电阻值计算的增益偏移
 #define AD8338_R_FEEDBACK       9500.0f  // 反馈电阻 9500Ω
