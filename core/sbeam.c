@@ -63,32 +63,6 @@ void generate_single_beam_signal(const DDSConfig *cfg) {
   pthread_detach(tid); // 后台执行，用户不需 join
 }
 
-
-/**
- * @brief 将AD8338增益(dB)转换为GAIN引脚电压（通用版本，支持外部电阻）
- * @param gain_db: 目标增益值
- * @param r_feedback: 反馈电阻值（欧姆）
- * @param r_input: 输入电阻值（欧姆）
- * @return GAIN引脚电压值 (V)
- */
-float gain_to_voltage_ex(float gain_db, float r_feedback, float r_input)
-{
-  // 通用增益公式: G_dB = 80×(V_GAIN-0.1) + 20log(R_FEEDBACK/R_N) - 26
-  // 转换为: V_GAIN = (G_dB - 20log(R_FEEDBACK/R_N) + 26)/80 + 0.1
-  
-  float log_term = 20.0f * log10f(r_feedback / r_input);
-  float voltage = (gain_db - log_term + 26.0f) / 80.0f + 0.1f;
-  
-  // 确保电压在有效范围内 (0.1V 到 1.1V)
-  if (voltage < 0.1f) {
-    voltage = 0.1f;
-  } else if (voltage > 1.1f) {
-    voltage = 1.1f;
-  }
-  
-  return voltage;
-}
-
 void receive_single_beam_response(
   uint16_t start_gain,
   uint16_t end_gain,
@@ -103,4 +77,31 @@ void receive_single_beam_response(
   net_listener_start(eth_ifname, callback);
 
   // 配置DAC63001增益控制
+  dac63001_init(i2c_dev);
+  // 配置外部参考模式
+  if (dac63001_setup_external_ref() < 0) {
+    fprintf(stderr, "错误: DAC配置失败\n");
+    dac63001_close();
+    return 1;
+  }
+  
+  // 设置增益扫描
+  if (start_gain == end_gain) {
+    float voltage = ad8338_gain_to_voltage(start_gain);
+    printf("起始和结束增益相同，设置固定电压 %.3fV\n", voltage);
+    dac63001_set_fixed_voltage(voltage);
+    printf("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
+    dac63001_close();
+    return 1;
+  }
+
+  if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
+    fprintf(stderr, "错误: 增益扫描设置失败\n");
+    dac63001_close();
+    return 1;
+  }
+  dac63001_start_waveform();
+  usleep(gain_duration_us);
+  dac63001_stop_waveform();
+  dac63001_close();
 }

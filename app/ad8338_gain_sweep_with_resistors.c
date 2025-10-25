@@ -107,9 +107,9 @@ int main(int argc, char* argv[]) {
   // 设置增益扫描
   if (start_gain == end_gain) {
     float voltage = ad8338_gain_to_voltage(start_gain);
-    printf("起始和结束增益相同，设置固定电压 %.3fV\n", start_voltage);
-    dac63001_set_fixed_voltage(start_voltage);
-    printf("当前增益: %d dB (%.3fV)\n", start_gain, start_voltage);
+    printf("起始和结束增益相同，设置固定电压 %.3fV\n", voltage);
+    dac63001_set_fixed_voltage(voltage);
+    printf("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
     dac63001_close();
     return 1;
   }
