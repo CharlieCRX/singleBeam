@@ -122,10 +122,6 @@ int dac63001_setup_sawtooth_wave(float min_voltage, float max_voltage,
   ret = i2c_hal_write_reg16(DAC63001_I2C_ADDR, DAC_0_FUNC_CONFIG, func_config);
   if (ret < 0) return ret;
   
-  // 启动函数生成
-  ret = dac63001_start_waveform();
-  if (ret < 0) return ret;
-  
   // 计算预期频率
   uint16_t margin_high_value = margin_high_code >> 4;
   uint16_t margin_low_value = margin_low_code >> 4;

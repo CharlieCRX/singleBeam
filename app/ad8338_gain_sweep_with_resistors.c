@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     dac63001_close();
     return 1;
   }
-  
+  dac63001_start_waveform();
   printf("\n增益扫描已启动，按 Ctrl+C 停止...\n");
   
   // 保持运行，直到收到停止信号

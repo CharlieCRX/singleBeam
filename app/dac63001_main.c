@@ -172,6 +172,7 @@ int main(int argc, char *argv[]) {
       
       ret = dac63001_setup_sawtooth_wave(g_args.min_voltage, g_args.max_voltage,
                        g_args.code_step, g_args.slew_rate);
+      ret &= dac63001_start_waveform();
       break;
       
     case DAC63001_WAVEFORM_NONE:
