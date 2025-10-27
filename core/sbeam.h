@@ -40,7 +40,7 @@ void generate_single_beam_signal(const DDSConfig *cfg);
  *
  * @param start_gain       初始增益值（单位可根据硬件定义，例如 DAC 数值或 mV）。
  * @param end_gain         结束增益值。
- * @param gain_duration_us 增益持续时间（微秒）。
+ * @param gain_duration_us 增益持续时间（微秒）。时间大于 6000 微秒（6 ms）, 小于 17000000 微秒（17 秒）。
  * @param callback         网络包回调函数，用于处理每个接收到的数据包。
  *                         定义如下：
  *                         typedef void (*NetPacketCallback)(const uint8_t *data, int length);

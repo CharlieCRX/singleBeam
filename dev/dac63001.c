@@ -348,8 +348,8 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
     return -1;
   }
 
-  if (gain_duration_us < 6000) {
-    LOG_ERROR("增益持续时间太短，必须大于 6 ms\n");
+  if (gain_duration_us < 6000 || gain_duration_us > 17000000) {
+    LOG_ERROR("持续时间必须在 6000 微秒到 17 秒之间\n");
     return -1;
   }
 
@@ -366,11 +366,6 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
   // 参数检查
   if (start_gain > AD8338_GAIN_MAX_DB || end_gain > AD8338_GAIN_MAX_DB) {
     LOG_ERROR("增益值必须在 0-%d dB 范围内\n", AD8338_GAIN_MAX_DB);
-    return -1;
-  }
-  
-  if (gain_duration_us > 5000000) { // 5秒限制
-    LOG_ERROR("持续时间不能超过 5秒\n");
     return -1;
   }
   

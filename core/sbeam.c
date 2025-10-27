@@ -2,6 +2,7 @@
 #include "../dev/ad5932.h"
 #include "../dev/dac63001.h"
 #include "../dev/fpga.h"
+#include "../utils/log.h"
 #include <pthread.h>
 #include <unistd.h>
 
@@ -80,7 +81,7 @@ void receive_single_beam_response(
   dac63001_init(i2c_dev);
   // 配置外部参考模式
   if (dac63001_setup_external_ref() < 0) {
-    fprintf(stderr, "错误: DAC配置失败\n");
+    LOG_ERROR("DAC配置失败\n");
     dac63001_close();
     return 1;
   }
@@ -88,20 +89,20 @@ void receive_single_beam_response(
   // 设置增益扫描
   if (start_gain == end_gain) {
     float voltage = ad8338_gain_to_voltage(start_gain);
-    printf("起始和结束增益相同，设置固定电压 %.3fV\n", voltage);
+    LOG_INFO("起始和结束增益相同，设置固定电压 %.3fV\n", voltage);
     dac63001_set_fixed_voltage(voltage);
-    printf("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
+    LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
     dac63001_close();
     return 1;
   }
 
   if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
-    fprintf(stderr, "错误: 增益扫描设置失败\n");
+    LOG_ERROR("错误: 增益扫描设置失败\n");
     dac63001_close();
     return 1;
   }
   dac63001_start_waveform();
-  usleep(gain_duration_us);
+  usleep(5000); // 5 ms 延迟确保波形开始
   dac63001_stop_waveform();
   dac63001_close();
 }

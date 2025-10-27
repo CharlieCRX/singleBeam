@@ -75,11 +75,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   
-  if (duration_us > 5000000) {
-    fprintf(stderr, "错误: 持续时间不能超过 5秒 (5000000 微秒)\n");
-    return 1;
-  }
-  
   printf("AD8338 增益扫描测试 (使用具体电阻值)\n");
   printf("==================================\n");
   printf("电阻配置: R_FEEDBACK=%.0fΩ, R_N=%.0fΩ\n", AD8338_R_FEEDBACK, AD8338_R_N);
