@@ -103,6 +103,7 @@ int fpga_init(const char* i2c_bus) {
  */
 void fpga_set_acq_enable(bool enable) {
   uint16_t val = enable ? 0x0001 : 0x0000;
+  LOG_INFO("FPGA set acquisition enable: %s\n", enable ? "ENABLED" : "DISABLED");
   i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_ACQ_EN, val);
 }
 
@@ -142,6 +143,7 @@ void fpga_release_soft_reset(void) {
  * @return 0表示成功，-1表示失败。
  */
 int fpga_initialize_udp_header(S_udp_header_params *params) {
+  LOG_INFO("Initializing FPGA UDP header...\n");
   if (params == NULL) {
     LOG_ERROR("Input parameters pointer is NULL.\n");
     return -1;
@@ -209,11 +211,15 @@ int fpga_initialize_udp_header(S_udp_header_params *params) {
 
 
   // --- 5. 打印配置信息 ---
-  LOG_INFO("Configured IP addresses - SRC: %s (0x%08X), DST: %s (0x%08X)\n", 
-           inet_ntoa((struct in_addr){.s_addr = pkg_hdr.ip.src_ip}), 
-           ntohl(pkg_hdr.ip.src_ip),
-           inet_ntoa((struct in_addr){.s_addr = pkg_hdr.ip.dst_ip}), 
-           ntohl(pkg_hdr.ip.dst_ip));
+  char src_ip_str[INET_ADDRSTRLEN];
+  char dst_ip_str[INET_ADDRSTRLEN];
+  
+  inet_ntop(AF_INET, &pkg_hdr.ip.src_ip, src_ip_str, sizeof(src_ip_str));
+  inet_ntop(AF_INET, &pkg_hdr.ip.dst_ip, dst_ip_str, sizeof(dst_ip_str));
+  
+  LOG_INFO("Configured IP addresses - SRC: %s (0x%08X), DST: %s (0x%08X)\n",
+           src_ip_str, ntohl(pkg_hdr.ip.src_ip),
+           dst_ip_str, ntohl(pkg_hdr.ip.dst_ip));
   LOG_INFO("Configured ports - SRC: %u, DST: %u\n", 
            ntohs(pkg_hdr.udp.sport), ntohs(pkg_hdr.udp.dport));
   LOG_INFO("IP packet length: %u, UDP total length: %u\n", 

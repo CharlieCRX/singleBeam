@@ -55,6 +55,7 @@ void generate_single_beam_signal(const DDSConfig *cfg) {
   // 初始化 FPGA UDP 头
   fpga_init(i2c_dev);
   fpga_initialize_udp_header(&udp_header_params);
+  fpga_set_acq_enable(false);
 
   // 创建扫频线程
   pthread_t tid;
@@ -97,12 +98,14 @@ void receive_single_beam_response(
   }
 
   if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
-    LOG_ERROR("错误: 增益扫描设置失败\n");
+    LOG_ERROR("增益扫描设置失败\n");
     dac63001_close();
     return 1;
   }
   dac63001_start_waveform();
   usleep(5000); // 5 ms 延迟确保波形开始
   dac63001_stop_waveform();
+  usleep(5000); // 5 ms 延迟确保波形停止
+  fpga_set_acq_enable(false);
   dac63001_close();
 }

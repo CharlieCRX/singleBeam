@@ -138,19 +138,19 @@ int dac63001_setup_sawtooth_wave(float min_voltage, float max_voltage,
   float period = step_time * (code_range / actual_step);
   float frequency = 1.0f / period;
   
-  LOG_INFO("预期频率: %.2f Hz\n", frequency);
-  LOG_INFO("周期: %.6f 秒\n", period);
+  LOG_INFO("实际产生的频率: %.2f Hz\n", frequency);
+  LOG_INFO("实际产生的周期: %.6f 秒\n", period);
 
   return 0;
 }
 
 int dac63001_start_waveform(void) {
-  LOG_INFO("开始函数生成\n");
+  LOG_INFO("开始增益函数生成\n");
   return i2c_hal_write_reg16(DAC63001_I2C_ADDR, COMMON_DAC_TRIG, 0x0001);
 }
 
 int dac63001_stop_waveform(void) {
-  LOG_INFO("停止函数生成\n");
+  LOG_INFO("停止增益函数生成\n");
   return i2c_hal_write_reg16(DAC63001_I2C_ADDR, COMMON_DAC_TRIG, 0x0000);
 }
 

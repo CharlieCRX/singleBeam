@@ -121,6 +121,7 @@ static void *listener_loop(void *arg) {
  * @return 0成功，-1失败
  */
 int net_listener_start(const char *ifname, NetPacketCallback cb) {
+  LOG_INFO("[net_listener] Starting on %s...\n", ifname);
   if (running)
     return 0;
 
