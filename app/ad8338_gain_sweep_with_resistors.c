@@ -16,11 +16,13 @@ void signal_handler(int sig) {
 void print_usage(const char* program_name) {
   printf("用法: %s <起始增益dB> <结束增益dB> <持续时间微秒>\n", program_name);
   printf("示例: %s 0 80 1000000  # 从0dB到80dB，持续1秒\n", program_name);
-  printf("     %s 80 0 500000   # 从80dB到0dB，持续0.5秒\n", program_name);
+  printf("     %s 80 0 600000   # 从80dB到0dB，持续0.6秒\n", program_name);
   printf("     %s 20 40 2000000   # 从20dB到40dB，持续2秒\n", program_name);
   printf("     %s 30 30 1000000   # 固定30dB增益，持续1秒\n", program_name);
   printf("\n电阻配置: R_FEEDBACK=%.0fΩ, R_N=%.0fΩ\n", AD8338_R_FEEDBACK, AD8338_R_N);
   printf("注意: 最大增益80dB对应0.1V，最小增益0dB对应1.1V\n");
+  printf("      持续时间必须大于600ms (600000微秒)\n");
+  printf("      建议持续时间: 1-5秒 (1000000-5000000微秒)\n");
 }
 
 // 测试增益-电压转换
@@ -120,24 +122,8 @@ int main(int argc, char* argv[]) {
     return 1;
   }
   dac63001_start_waveform();
-  printf("\n增益扫描已启动，按 Ctrl+C 停止...\n");
-  
-  // 保持运行，直到收到停止信号
-  int count = 0;
-  while (keep_running) {
-    sleep(1);
-    count++;
-    printf("运行中... %d 秒\n", count);
-  }
-  
-  // 停止波形生成
-  printf("\n停止增益扫描...\n");
+  usleep(5000); // 5 ms 延迟确保波形开始
   dac63001_stop_waveform();
-  
-  // 设置到结束增益的固定电压
-  dac63001_set_fixed_voltage(AD8338_VGAIN_MIN_V);
-  
-  printf("已停止，当前增益: 0 dB (%.3fV)\n", AD8338_VGAIN_MIN_V);
   
   dac63001_close();
   return 0;

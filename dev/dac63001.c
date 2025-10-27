@@ -348,6 +348,11 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
     return -1;
   }
 
+  if (gain_duration_us < 6000) {
+    LOG_ERROR("增益持续时间太短，必须大于 6 ms\n");
+    return -1;
+  }
+
   int ret;
   
   LOG_INFO("设置增益扫描: %ddB -> %ddB, 持续时间: %uus\n", 
