@@ -147,20 +147,20 @@ int transmit_and_receive_single_beam(
     dac63001_set_fixed_voltage(voltage);
     LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
     dac63001_close();
-  }
-
-  // 锯齿波增益扫描模式，仅需配置
-  if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
-    LOG_ERROR("增益扫描设置失败\n");
-    dac63001_close();
-    return -1;
-  }
-
-  // 4. 配置GPIO触发以同步增益扫描开始
-  if (dac63001_enable_gpio_start_stop_trigger() < 0) {
-    LOG_ERROR("DAC GPIO触发配置失败\n");
-    dac63001_close();
-    return -1;
+  } else {
+    // 锯齿波增益扫描模式，仅需配置
+    if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
+      LOG_ERROR("增益扫描设置失败\n");
+      dac63001_close();
+      return -1;
+    }
+  
+    // 4. 可变增益时，需要配置GPIO触发以同步增益扫描开始
+    if (dac63001_enable_gpio_start_stop_trigger() < 0) {
+      LOG_ERROR("DAC GPIO触发配置失败\n");
+      dac63001_close();
+      return -1;
+    }
   }
   
   // 5. 启动FPGA发送网络包 + 启动网络监听（先于扫频开始）
