@@ -1,5 +1,6 @@
 #include "ad5932.h"
 #include "../protocol/spi_hal.h"
+#include "fpga.h"
 #include <stdint.h>
 #include <unistd.h>  // 包含usleep函数，用于必要的延时
 #include <stdio.h>   // 包含标准输入输出函数，例如 FILE
@@ -238,37 +239,7 @@ void ad5932_interrupt(void){
  *      通过 FPGA 读取 STANDBY 引脚状态来判断扫频是否完成
  */
 bool ad5932_is_sweep_done(void) {
-  FILE *fp;
-  char buffer[64];
-  int value = -1;
-
-  // 打开命令管道，执行 fpga -r 0x12
-  fp = popen("fpga -r 0x12", "r");
-  if (fp == NULL) {
-    perror("错误: 无法执行命令 fpga -r 0x12");
-    return -1;
-  }
-
-  // 从命令输出中读取一行（已知输出形如 00000000 或 00000001）
-  if (fgets(buffer, sizeof(buffer), fp) != NULL) {
-    // 去掉可能的换行符
-    buffer[strcspn(buffer, "\n")] = '\0';
-
-    // 将读取的字符串转换为整数
-    value = atoi(buffer);
-  } else {
-    perror("错误: 无法读取命令输出");
-  }
-
-  // 关闭命令管道
-  pclose(fp);
-
-  // 根据读取的值判断扫频是否完成
-  if (value > 0) {
-    return true;
-  } else {
-    return false;
-  }
+  return fpga_is_dds_standby_up();
 }
 
 /**
@@ -277,32 +248,18 @@ bool ad5932_is_sweep_done(void) {
  */
 void ad5932_start_sweep(void) {
   // 拉低 CTRL
-  if (system("fpga -w 0x10 0") != 0) {
-    perror("错误: 拉低 CTRL 失败");
-  }
+  fpga_set_dds_ctrl_pulse(false);
 
   // 确保 CTRL 有足够脉宽 (~1us-10us)
   usleep(10000); // 10ms 延迟
 
   // 拉高 CTRL
-  if (system("fpga -w 0x10 1") != 0) {
-    perror("错误: 拉高 CTRL 失败");
-  }
+  fpga_set_dds_ctrl_pulse(true);
 }
 
 /**
  * @brief STANDBY 引脚：暂停或恢复输出 + 也可配合 reset 进入低功耗模式
  */
 void ad5932_set_standby(bool enable) {
-  if (enable) {
-    // 拉高 STANDBY
-    if (system("fpga -w 0x12 1") != 0) {
-      perror("错误: 拉高 STANDBY 失败");
-    }
-  } else {
-    // 拉低 STANDBY
-    if (system("fpga -w 0x12 0") != 0) {
-      perror("错误: 拉低 STANDBY 失败");
-    }
-  }
+  fpga_set_dds_standby(enable);
 }

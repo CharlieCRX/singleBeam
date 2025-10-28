@@ -7,6 +7,7 @@
 #include <fcntl.h>
 
 #include "../dev/ad5932.h"
+#include "../dev/fpga.h"
 
 void print_usage(const char *program_name) {
   fprintf(stderr, "\n用法: %s [选项]\n", program_name);
@@ -100,6 +101,7 @@ int main(int argc, char *argv[]) {
   printf("==============================\n\n");
 
   ad5932_init();
+  fpga_init("/dev/i2c-2");
 
   ad5932_reset();
   printf("AD5932 已复位，进入内部扫频模式。\n");

@@ -24,6 +24,13 @@ typedef enum {
   REG_UDP_HDR_7       = 0x0047,   // UDP包头: 目的IP byte1-byte0/源端口
   REG_UDP_HDR_8       = 0x0048,   // UDP包头: 目的端口/UDP报文长度
   REG_UDP_HDR_9       = 0x0050,   // UDP包头: UDP报文校验和/保留
+
+  // DDS 控制寄存器
+  REG_DDS_CTRL        = 0x0010,   // DDS控制线，0→1跳变触发DDS发送信号，写1后自动回0
+  REG_DDS_INT         = 0x0011,   // DDS中断输入，默认为0
+  REG_DDS_STB         = 0x0012,   // DDS待机状态，0:正常工作，1:待机
+  REG_DDS_SYNCOUT     = 0x0013,   // DDS同步输出信号，0:未完成信号发送，1:已完成发送
+
 } fpga_reg_addr_t;
 
 
@@ -83,5 +90,10 @@ void fpga_release_soft_reset(void);
  * @brief 配置FPGA的UDP包头信息
  */
 int fpga_initialize_udp_header(S_udp_header_params *params);
+
+// DDS 控制函数声明
+bool fpga_is_dds_standby_up(void);
+void fpga_set_dds_ctrl_pulse(bool enable);
+void fpga_set_dds_standby(bool enable);
 
 #endif // DEV_FPGA_H

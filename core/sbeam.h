@@ -54,6 +54,32 @@ void receive_single_beam_response(
 );
 
 
+/**
+ * @brief 完整的单波束信号收发处理
+ * @details
+ *  行为描述
+ *  该函数执行完整的单波束信号收发流程：
+ *    1. 初始化FPGA网络头配置
+ *    2. 配置扫频参数准备信号生成
+ *    3. 配置接收增益参数和网络数据回调函数
+ *    4. 启动FPGA数据包发送和网络监听（先于扫频开始）
+ *    5. 启动扫频信号生成，并同步等待扫频结束
+ *    6. 扫频结束后立即启动增益扫描波形
+ *    7. 延迟5ms后停止增益扫描信号
+ *    8. 停止FPGA数据包发送
+ * @details
+ *  执行细节：
+ *   - 在信号发送之前，就已经配置好网络监听和回调函数，以及监听的增益以确保不会错过任何数据包。
+ *   - 如果起始增益和结束增益相同，则直接设置固定电压预备信号接收。
+ *   - 如果增益不同，则配置锯齿波增益扫描，并在扫频结束后启动增益扫描。
+ *
+ * @param cfg               DDS扫频配置参数
+ * @param start_gain        初始增益值
+ * @param end_gain          结束增益值  
+ * @param gain_duration_us  增益扫描持续时间（微秒）
+ * @param callback          网络数据包回调处理函数
+ * @return int              执行结果：0-成功，其他-错误码
+ */
 int transmit_and_receive_single_beam(
   const DDSConfig *cfg,
   uint16_t start_gain,

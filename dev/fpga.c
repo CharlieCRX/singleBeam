@@ -252,3 +252,30 @@ int fpga_initialize_udp_header(S_udp_header_params *params) {
   LOG_INFO("FPGA UDP header initialization completed successfully\n");
   return 0;
 }
+
+// DDS 控制函数
+bool fpga_is_dds_standby_up(void) {
+  uint32_t val = 0;
+  if (i2c_hal_fpga_read(FPGA_I2C_SLAVE, REG_DDS_STB, &val) < 0) {
+    LOG_ERROR("Failed to read DDS STANDVY pulse from FPGA.\n");
+    return false;
+  }
+  return (val & 0x1) != 0;
+}
+
+
+void fpga_set_dds_ctrl_pulse(bool enable) {
+  if (enable) {
+    LOG_INFO("FPGA DDS control pulse: TRIGGERED\n");
+    i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DDS_CTRL, 0x0001);
+  } else {
+    LOG_INFO("FPGA DDS control pulse: CLEARED\n");
+    i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DDS_CTRL, 0x0000);
+  }
+}
+
+void fpga_set_dds_standby(bool enable) {
+  uint16_t val = enable ? 0x0001 : 0x0000;
+  LOG_INFO("FPGA set DDS standby: %s\n", enable ? "ENABLED" : "DISABLED");
+  i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DDS_STB, val);
+}

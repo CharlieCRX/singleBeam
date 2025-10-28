@@ -119,5 +119,74 @@ int transmit_and_receive_single_beam(
   uint32_t gain_duration_us,
   NetPacketCallback callback
 ) {
+  // 1. 初始化FPGA网络头
+  fpga_init(i2c_dev);
+  fpga_initialize_udp_header(&udp_header_params);
+  
+  // 2. 配置扫频参数
+  ad5932_init();
+  ad5932_reset();
+  ad5932_set_start_frequency(cfg->start_freq);
+  ad5932_set_delta_frequency(cfg->delta_freq, cfg->positive_incr);
+  ad5932_set_number_of_increments(cfg->num_incr);
+  ad5932_set_increment_interval(0, cfg->mclk_mult, cfg->interval_val);
+  ad5932_set_waveform(cfg->wave_type);
+  
+  // 3. 配置接收增益和回调函数
+  dac63001_init(i2c_dev);
+  if (dac63001_setup_external_ref() < 0) {
+    LOG_ERROR("DAC外部参考模式配置失败\n");
+    dac63001_close();
+    return -1;
+  }
+
+  // 固定增益模式，直接设置电压
+  if (start_gain == end_gain) {
+    float voltage = ad8338_gain_to_voltage(start_gain);
+    LOG_INFO("起始和结束增益相同，直接设置固定电压进行接收信号 %.3fV\n", voltage);
+    dac63001_set_fixed_voltage(voltage);
+    LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
+    dac63001_close();
+  }
+
+  // 锯齿波增益扫描模式，仅需配置
+  if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
+    LOG_ERROR("增益扫描设置失败\n");
+    dac63001_close();
+    return -1;
+  }
+
+  
+  // 4. 启动FPGA发送网络包 + 启动网络监听（先于扫频开始）
+  net_listener_start(eth_ifname, callback);
+  fpga_set_acq_enable(true);
+  
+  // 5. 启动扫频信号，并同步等待扫频结束
+  ad5932_start_sweep();
+  LOG_INFO("扫频信号开始生成...\n");
+  
+  while (!ad5932_is_sweep_done()) {
+    usleep(5); // 5微秒轮询等待
+  }
+  LOG_INFO("扫频信号生成完成\n");
+  
+  // 6. 扫频结束后，立即启动增益扫描波形
+  LOG_INFO("启动增益扫描...\n");
+  if (start_gain != end_gain) {
+    dac63001_start_waveform();
+    usleep(5000); // 等待增益扫描完成
+    dac63001_stop_waveform();
+    LOG_INFO("增益扫描完成\n");
+  }
+  
+  // 8. 停止FPGA发送网络包
+  fpga_set_acq_enable(false);
+  LOG_INFO("单波束收发流程完成\n");
+  
+  // 清理资源
+  ad5932_reset();
+  ad5932_set_standby(false);
+  dac63001_close();
+  
   return 0;
 }
