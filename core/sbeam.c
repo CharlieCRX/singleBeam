@@ -56,6 +56,7 @@ void generate_single_beam_signal(const DDSConfig *cfg) {
   fpga_init(i2c_dev);
   fpga_initialize_udp_header(&udp_header_params);
   fpga_set_acq_enable(false);
+  fpga_set_dac_ctrl_en(false); // 单独调用时，停用 DAC 的 GPIO 生成增益波形
 
   // 创建扫频线程
   pthread_t tid;
@@ -71,12 +72,37 @@ void receive_single_beam_response(
   uint32_t gain_duration_us,
   NetPacketCallback callback
 ) {
+  receive_single_beam_response_with_cache(start_gain, end_gain, gain_duration_us, callback, NULL, 0);
+}
+
+
+
+void receive_single_beam_response_with_cache(
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback packet_cb,
+  NetCacheCallback cache_cb,
+  uint32_t cache_size
+) {
   // 启动FPGA采集
   fpga_init(i2c_dev);
   fpga_set_acq_enable(true);
 
-  // 启动网络监听
-  net_listener_start(eth_ifname, callback);
+  // 启动网络监听（选择实时包回调或缓存模式）
+  if (cache_cb && cache_size > 0) {
+    if (net_listener_start_with_cache(eth_ifname, packet_cb, cache_cb, cache_size) < 0) {
+      LOG_ERROR("带缓存的网络监听启动失败\n");
+      return;
+    }
+    LOG_INFO("启动带缓存的网络监听，缓存大小: %u MB\n", cache_size / (1024 * 1024));
+  } else {
+    if (net_listener_start(eth_ifname, packet_cb) < 0) {
+      LOG_ERROR("网络监听启动失败\n");
+      return;
+    }
+    LOG_INFO("启动实时包回调网络监听\n");
+  }
 
   // 配置DAC63001增益控制
   dac63001_init(i2c_dev);
@@ -84,7 +110,7 @@ void receive_single_beam_response(
   if (dac63001_setup_external_ref() < 0) {
     LOG_ERROR("DAC配置失败\n");
     dac63001_close();
-    return 1;
+    return;
   }
   
   // 设置增益扫描
@@ -95,12 +121,12 @@ void receive_single_beam_response(
     LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
     dac63001_close();
     return 1;
-  }
-
-  if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
-    LOG_ERROR("增益扫描设置失败\n");
-    dac63001_close();
-    return 1;
+  } else {
+    if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
+      LOG_ERROR("增益扫描设置失败\n");
+      dac63001_close();
+      return 1;
+    }
   }
   dac63001_start_waveform();
   usleep(5000); // 5 ms 延迟确保波形开始
@@ -111,13 +137,26 @@ void receive_single_beam_response(
 }
 
 
-
 int transmit_and_receive_single_beam(
   const DDSConfig *cfg,
   uint16_t start_gain,
   uint16_t end_gain,
   uint32_t gain_duration_us,
   NetPacketCallback callback
+) {
+  return transmit_and_receive_single_beam_with_cache(cfg, start_gain, end_gain, 
+    gain_duration_us, callback, NULL, 0);
+}
+
+
+int transmit_and_receive_single_beam_with_cache(
+  const DDSConfig *cfg,
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback packet_cb,
+  NetCacheCallback cache_cb,
+  uint32_t cache_size
 ) {
   // 1. 初始化FPGA网络头
   fpga_init(i2c_dev);
@@ -132,7 +171,7 @@ int transmit_and_receive_single_beam(
   ad5932_set_increment_interval(0, cfg->mclk_mult, cfg->interval_val);
   ad5932_set_waveform(cfg->wave_type);
   
-  // 3. 配置接收增益和回调函数
+  // 3. 配置接收增益
   dac63001_init(i2c_dev);
   if (dac63001_setup_external_ref() < 0) {
     LOG_ERROR("DAC外部参考模式配置失败\n");
@@ -163,27 +202,42 @@ int transmit_and_receive_single_beam(
     }
   }
   
-  // 5. 启动FPGA发送网络包 + 启动网络监听（先于扫频开始）
-  net_listener_start(eth_ifname, callback);
+  // 5. 启动网络监听（选择实时包回调或缓存模式）
+  if (cache_cb && cache_size > 0) {
+    if (net_listener_start_with_cache(eth_ifname, packet_cb, cache_cb, cache_size) < 0) {
+      LOG_ERROR("带缓存的网络监听启动失败\n");
+      dac63001_close();
+      return -1;
+    }
+    LOG_INFO("启动带缓存的网络监听，缓存大小: %u MB\n", cache_size / (1024 * 1024));
+  } else {
+    if (net_listener_start(eth_ifname, packet_cb) < 0) {
+      LOG_ERROR("网络监听启动失败\n");
+      dac63001_close();
+      return -1;
+    }
+    LOG_INFO("启动实时包回调网络监听\n");
+  }
+  
+  // 6. 启动FPGA发送网络包
   fpga_set_acq_enable(true);
   
-  // 6. 启动扫频信号，并同步等待扫频结束(同时也是增益输出的触发信号)
+  // 7. 启动扫频信号，并同步等待扫频结束(同时也是增益输出的触发信号)
   ad5932_start_sweep();
   LOG_INFO("扫频信号开始生成...\n");
   
-  // 7. 扫频结束后硬件 GPIO 触发立即启动增益扫描波形
+  // 8. 扫频结束后硬件 GPIO 触发立即启动增益扫描波形
   while (!ad5932_is_sweep_done()) {
     usleep(1); // 1微秒轮询等待
   }
-  LOG_INFO("扫频信号生成完成\n");
+  LOG_INFO("扫频信号生成完成，同时产生增益控制信号接收数据\n");
   
-  // 8. 结束增益扫描
-  usleep(2000); // 2ms 后输出
-  dac63001_stop_waveform();
-  
-  // 8. 停止FPGA发送网络包
+  // 10. 停止FPGA发送网络包
   fpga_set_acq_enable(false);
   LOG_INFO("单波束收发流程完成\n");
+
+  // 11. 停止网络监听（这会触发缓存回调）
+  sbeam_stop_listener_with_cache(eth_ifname);
   
   // 清理资源
   ad5932_reset();
@@ -191,4 +245,26 @@ int transmit_and_receive_single_beam(
   dac63001_close();
   
   return 0;
+}
+
+
+sbeam_cache_stats_t sbeam_get_cache_stats(void) {
+  cache_stats_t net_stats = net_listener_get_cache_stats();
+  sbeam_cache_stats_t stats;
+  
+  stats.total_packets = net_stats.total_packets;
+  stats.total_bytes = net_stats.total_bytes;
+  stats.cache_size = net_stats.cache_size;
+  stats.cache_used = net_stats.cache_used;
+  stats.dropped_packets = net_stats.dropped_packets;
+  
+  return stats;
+}
+
+void sbeam_clear_cache(void) {
+  net_listener_clear_cache();
+}
+
+void sbeam_stop_listener_with_cache(const char *ifname) {
+  net_listener_stop_with_cache(ifname);
 }

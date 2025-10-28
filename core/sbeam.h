@@ -15,6 +15,15 @@ typedef struct {
   bool     positive_incr;  // 扫频方向 (true=正向, false=负向)
 } DDSConfig;
 
+// 缓存统计信息结构体
+typedef struct {
+  uint32_t total_packets;      // 总包数
+  uint64_t total_bytes;        // 总字节数
+  uint32_t cache_size;         // 缓存大小
+  uint32_t cache_used;         // 已用缓存
+  uint32_t dropped_packets;    // 丢弃的包数
+} sbeam_cache_stats_t;
+
 
 /**
  * @brief 生成单波束信号（配置并启动 AD5932）
@@ -88,5 +97,49 @@ int transmit_and_receive_single_beam(
   uint32_t gain_duration_us,
   NetPacketCallback callback
 );
+
+
+/**
+ * @brief 接收单波束信号的反馈数据（带缓存）
+ */
+void receive_single_beam_response_with_cache(
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback packet_cb,      // 实时包回调（可选）
+  NetCacheCallback cache_cb,        // 缓存回调（必须）
+  uint32_t cache_size               // 缓存大小
+);
+
+
+
+/**
+ * @brief 完整的单波束信号收发处理（带缓存）
+ */
+int transmit_and_receive_single_beam_with_cache(
+  const DDSConfig *cfg,
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback packet_cb,      // 实时包回调（可选）
+  NetCacheCallback cache_cb,        // 缓存回调（必须）
+  uint32_t cache_size               // 缓存大小
+);
+
+
+/**
+ * @brief 获取缓存统计信息
+ */
+sbeam_cache_stats_t sbeam_get_cache_stats(void);
+
+/**
+ * @brief 手动清空缓存
+ */
+void sbeam_clear_cache(void);
+
+/**
+ * @brief 停止网络监听（带缓存数据传递）
+ */
+void sbeam_stop_listener_with_cache(const char *ifname);
 
 #endif  // SBEAM_H

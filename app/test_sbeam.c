@@ -12,6 +12,21 @@
 #include "sbeam.h"
 #include "../utils/log.h"
 
+// 函数声明
+void test_packet_callback(const uint8_t *buffer, int length);
+void test_cache_callback(const uint8_t *cache_data, uint32_t total_packets, 
+                        uint64_t total_bytes, const uint32_t *packet_lengths);
+// --- 辅助打印函数 ---
+static void print_mac(const char *label, const uint8_t *mac) {
+  printf("%s: %02X:%02X:%02X:%02X:%02X:%02X\n",
+     label, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+}
+
+static void print_ip(const char *label, uint32_t ip_addr) {
+  struct in_addr addr;
+  addr.s_addr = ip_addr;
+  printf("%s: %s\n", label, inet_ntoa(addr));
+}
 
 // 测试配置参数
 typedef struct {
@@ -35,6 +50,7 @@ typedef struct {
   uint32_t test_duration_sec;
 
   bool use_transceive_func; // 是否使用收发一体函数
+  bool test_with_cache;
 } TestConfig;
 
 // 全局统计变量
@@ -59,35 +75,159 @@ void signal_handler(int sig) {
   keep_running = false;
 }
 
-/**
- * @brief 网络数据包回调函数 - 用于测试接收功能
- */
-void test_packet_callback1(const uint8_t *data, int length) {
-  packet_count++;
-  total_data_received += length;
+
+// 缓存回调函数
+void test_cache_callback(const uint8_t *cache_data, uint32_t total_packets, 
+            uint64_t total_bytes, const uint32_t *packet_lengths) {
+  printf("\n=== 缓存数据回调 ===\n");
+  printf("总包数: %u\n", total_packets);
+  printf("总字节数: %lu\n", total_bytes);
+  printf("平均包大小: %.2f 字节\n", total_packets > 0 ? (float)total_bytes / total_packets : 0);
   
-  // 前5个包详细打印
-  if (packet_count <= 5) {
-    printf("📦 收到数据包 #%d:\n", packet_count);
-    printf("   数据长度: %d 字节\n", length);
+  // 详细解析前5个FPGA包
+  uint32_t fpga_packets = 0;
+  uint32_t offset = 0;
+  
+  for (uint32_t i = 0; i < total_packets && fpga_packets < 5; i++) {
+    const uint8_t *packet_data = cache_data + offset;
+    int packet_len = packet_lengths[i];
     
-    // 打印前16字节数据
-    printf("   前16字节: ");
-    for (int i = 0; i < 16 && i < length; i++) {
-      printf("%02X ", data[i]);
-    }
-    printf("\n");
+    // 解析以太网头
+    struct ethhdr *eth = (struct ethhdr*)packet_data;
     
-    // 简单数据校验（示例）
-    if (length >= 4) {
-      uint32_t header = *(uint32_t*)data;
-      printf("   数据头: 0x%08X\n", header);
+    // 仅处理 IP 包
+    if (ntohs(eth->h_proto) != ETH_P_IP) {
+      offset += packet_len;
+      continue;
     }
-  } else if (packet_count % 100 == 0) {
-    // 每100个包显示进度
-    printf("📡 已接收 %d 个数据包...\n", packet_count);
+    
+    // 解析 IP 头
+    struct iphdr *ip = (struct iphdr*)(packet_data + sizeof(struct ethhdr));
+    
+    // 仅处理 UDP 协议
+    if (ip->protocol != IPPROTO_UDP) {
+      offset += packet_len;
+      continue;
+    }
+    
+    // 解析 UDP 头
+    struct udphdr *udp = (struct udphdr*)(packet_data + sizeof(struct ethhdr) + ip->ihl * 4);
+    uint16_t dest_port = ntohs(udp->dest);
+    
+    // 检查是否为 FPGA 包
+    if (dest_port == 5030) {
+      fpga_packets++;
+      
+      int udp_len = ntohs(udp->len);
+      int payload_len = udp_len - sizeof(struct udphdr);
+      
+      printf("\n=== FPGA 缓存包 #%u ===\n", fpga_packets);
+      print_mac("源MAC", eth->h_source);
+      print_mac("目标MAC", eth->h_dest);
+      print_ip("源IP", ip->saddr);
+      print_ip("目标IP", ip->daddr);
+      printf("源端口: %d\n", ntohs(udp->source));
+      printf("目标端口: %d\n", dest_port);
+      printf("UDP长度: %d\n", udp_len);
+      printf("有效载荷: %d 字节\n", payload_len);
+      printf("包总长度: %d 字节\n", packet_len);
+      
+      // 打印前 16 字节载荷
+      int payload_offset = sizeof(struct ethhdr) + ip->ihl * 4 + sizeof(struct udphdr);
+      if (packet_len > payload_offset) {
+        printf("载荷前16字节: ");
+        for (int j = 0; j < 16 && (payload_offset + j) < packet_len; j++) {
+          printf("%02X ", packet_data[payload_offset + j]);
+        }
+        printf("\n");
+      }
+      printf("========================\n");
+    }
+    
+    offset += packet_len;
   }
+  
+  printf("\n缓存数据分析完成，共找到 %u 个FPGA包\n", fpga_packets);
 }
+
+/**
+ * @brief 测试带缓存的收发一体函数
+ */
+int test_transceive_function_with_cache(const TestConfig *config) {
+  printf("\n🔄 开始测试带缓存的收发一体函数...\n");
+  
+  // 准备 DDS 配置
+  DDSConfig dds_config = {
+    .start_freq = config->start_freq,
+    .delta_freq = config->delta_freq,
+    .num_incr = config->num_incr,
+    .wave_type = config->wave_type,
+    .mclk_mult = config->mclk_mult,
+    .interval_val = config->interval_val,
+    .positive_incr = config->positive_incr
+  };
+  
+  printf("📊 DDS配置: %u Hz起始, %u Hz步长, %u次递增\n", 
+       dds_config.start_freq, dds_config.delta_freq, dds_config.num_incr);
+  printf("📊 增益配置: %d dB -> %d dB, 持续时间: %.3f秒\n",
+       config->start_gain, config->end_gain, 
+       config->gain_duration_us / 1000000.0f);
+  printf("💾 缓存模式: 启用, 缓存大小: %u MB\n", DEFAULT_CACHE_SIZE / (1024 * 1024));
+  
+  // 调用带缓存的收发一体函数
+  printf("🎛️  调用 transmit_and_receive_single_beam_with_cache()...\n");
+  
+  int result = transmit_and_receive_single_beam_with_cache(
+    &dds_config,
+    config->start_gain,
+    config->end_gain,
+    config->gain_duration_us,
+    NULL,  // 实时包回调（可选）
+    test_cache_callback,   // 缓存回调
+    DEFAULT_CACHE_SIZE
+  );
+  
+  if (result == 0) {
+    printf("✅ 带缓存的收发一体函数执行成功\n");
+    
+    // 显示缓存统计
+    sbeam_cache_stats_t stats = sbeam_get_cache_stats();
+    printf("📊 缓存统计: 包数=%u, 字节=%lu, 使用率=%.1f%%, 丢弃=%u\n",
+         stats.total_packets, stats.total_bytes,
+         stats.cache_size > 0 ? (float)stats.cache_used / stats.cache_size * 100 : 0,
+         stats.dropped_packets);
+  } else {
+    printf("❌ 带缓存的收发一体函数执行失败，错误码: %d\n", result);
+  }
+  
+  return result;
+}
+
+/**
+ * @brief 测试带缓存的信号接收功能
+ */
+int test_signal_reception_with_cache(const TestConfig *config) {
+  printf("\n📡 开始测试带缓存的信号接收功能...\n");
+  
+  printf("🎛️  调用 receive_single_beam_response_with_cache()...\n");
+  printf("📊 增益扫描: %d dB -> %d dB, 持续时间: %.3f秒\n",
+    config->start_gain, config->end_gain, 
+    config->gain_duration_us / 1000000.0f);
+  printf("💾 缓存模式: 启用, 缓存大小: %u MB\n", DEFAULT_CACHE_SIZE / (1024 * 1024));
+  
+  receive_single_beam_response_with_cache(
+    config->start_gain,
+    config->end_gain,
+    config->gain_duration_us,
+    test_packet_callback,  // 实时包回调（可选）
+    test_cache_callback,   // 缓存回调
+    DEFAULT_CACHE_SIZE
+  );
+  
+  printf("✅ 带缓存的信号接收命令已发送\n");
+  return 0;
+}
+
 /**
  * @brief 网络数据包详细分析回调函数
  */
@@ -460,80 +600,92 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "测试模式选项:\n");
   fprintf(stderr, "  -g, --generate-only     仅测试信号生成功能 (AD5932 DDS)\n");
   fprintf(stderr, "  -r, --receive-only      仅测试信号接收功能 (DAC63001增益控制)\n");
-  fprintf(stderr, "  -i, --integrated        使用收发一体函数进行测试 (推荐)\n");  // 新增这行
+  fprintf(stderr, "  -i, --integrated        使用收发一体函数进行测试 (推荐)\n");
+  fprintf(stderr, "  -c, --with-cache        启用数据包缓存模式 (默认500MB)\n");
   fprintf(stderr, "  -t, --time SECONDS      测试持续时间 (默认: 10秒)\n");
   fprintf(stderr, "  -h, --help              显示此帮助信息\n\n");
   
   fprintf(stderr, "DDS 信号生成参数 (AD5932):\n");
-  fprintf(stderr, "  --start-freq HZ         起始频率 (Fstart, 默认: 1000000 = 1MHz)\n");
-  fprintf(stderr, "  --delta-freq HZ         频率递增步长 (Delta F, 默认为0时输出固定频率)\n");
-  fprintf(stderr, "  --num-incr COUNT        频率递增次数 (N_incr, 范围 2~4095, 默认: 2)\n");
+  fprintf(stderr, "  --start-freq HZ         起始频率 (默认: 1000000 = 1MHz)\n");
+  fprintf(stderr, "  --delta-freq HZ         频率递增步长 (0表示固定频率)\n");
+  fprintf(stderr, "  --num-incr COUNT        频率递增次数 (范围 2~4095, 默认: 2)\n");
   fprintf(stderr, "  --wave-type TYPE        输出波形类型 (0=正弦波, 1=三角波, 2=方波, 默认: 2)\n");
-  fprintf(stderr, "  --mclk-mult MULT        MCLK乘数 (0=1x, 1=5x, 2=100x, 3=500x, 默认: 0)\n");
-  fprintf(stderr, "  --interval-val VAL      每个频率的持续周期 T (范围 2~2047, 默认: 2)\n");
-  fprintf(stderr, "  --negative-sweep        使用负向频率步长 (扫频方向向下, 默认: 正向)\n\n");
+  fprintf(stderr, "  --mclk-mult MULT        MCLK倍频系数 (0=1x, 1=5x, 2=100x, 3=500x, 默认: 0)\n");
+  fprintf(stderr, "  --interval-val VAL      每个频率的持续周期 (范围 2~2047, 默认: 2)\n");
+  fprintf(stderr, "  --negative-sweep        使用负向扫频 (默认: 正向扫频)\n\n");
   
   fprintf(stderr, "增益控制参数 (DAC63001 + AD8338):\n");
-  fprintf(stderr, "  --start-gain DB         起始增益 (范围 0-80 dB, 默认: 0dB)\n");
-  fprintf(stderr, "  --end-gain DB           结束增益 (范围 0-80 dB, 默认: 80dB)\n");
-  fprintf(stderr, "  --duration-us US        增益持续时间 (范围 6000-17000000 us, 默认: 1000000 = 1秒)\n\n");
+  fprintf(stderr, "  --start-gain DB         起始增益值 (范围 0-80 dB, 默认: 0dB)\n");
+  fprintf(stderr, "  --end-gain DB           结束增益值 (范围 0-80 dB, 默认: 80dB)\n");
+  fprintf(stderr, "  --duration-us US        增益扫描持续时间 (范围 6000-17000000 us, 默认: 1000000 = 1秒)\n\n");
   
-  fprintf(stderr, "扫频参数解释:\n");
-  fprintf(stderr, "  -- 扫频范围: 起始频率 -> 起始频率 + (递增次数 × 频率步长)\n");
-  fprintf(stderr, "  -- 频率点数: 递增次数 + 1\n");
-  fprintf(stderr, "  -- 总波形数量: (递增次数 + 1) × 持续周期\n\n");
+  fprintf(stderr, "扫频参数说明:\n");
+  fprintf(stderr, "  - 扫频范围: 起始频率 -> 起始频率 + (递增次数 × 频率步长)\n");
+  fprintf(stderr, "  - 频率点数: 递增次数 + 1\n");
+  fprintf(stderr, "  - 总波形数量: (递增次数 + 1) × 持续周期\n\n");
 
-  fprintf(stderr, "收发一体函数测试示例:\n");
-  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n", program_name);
-  fprintf(stderr, "  -- 使用收发一体函数进行完整测试\n");
-  fprintf(stderr, "  -- 扫频参数: 300Hz 固定输出频率，总共输出 6 个波形数据 \n");
-  fprintf(stderr, "  -- 增益扫描: 0dB -> 80dB, 持续60ms\n");
-  fprintf(stderr, "  -- 示波器测试: 通道1测量ad5932的MSBOUT, 通道2测量dac63001的OUT0, 水平时长设置20ms, 通道1触发电压为1.5V左右\n");
-  fprintf(stderr, "  -- 时序: 先配置网络和增益，然后启动扫频，扫频完成后立即启动增益扫描\n\n");
+  fprintf(stderr, "网络数据包处理模式:\n");
+  fprintf(stderr, "  - 实时回调模式: 每个数据包接收后立即处理\n");
+  fprintf(stderr, "  - 缓存模式: 数据包先存入内存，测试结束后统一处理\n");
+  fprintf(stderr, "  - 混合模式: 同时支持实时处理和缓存 (-c 与 -i 或 -r 联用)\n\n");
+
+  fprintf(stderr, "使用示例:\n\n");
   
-  fprintf(stderr, "综合测试示例:\n");
-  fprintf(stderr, "  %s\n", program_name);
-  fprintf(stderr, "  -- 完整测试: 500kHz起始, 50kHz步长, 2次频率递增, 每个频率输出2次, 方波输出, 1秒增益扫描\n");
-  fprintf(stderr, "  -- 扫频范围: 500kHz -> 600kHz, 共3个频率点\n");
-  fprintf(stderr, "  -- 增益扫描: 0dB -> 80dB\n\n");
+  fprintf(stderr, "1. 收发一体函数测试 (推荐):\n");
+  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 \\\n", program_name);
+  fprintf(stderr, "     --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n");
+  fprintf(stderr, "  - 固定频率输出: 300Hz，共输出6个波形\n");
+  fprintf(stderr, "  - 增益扫描: 0dB → 80dB，持续60ms\n");
+  fprintf(stderr, "  - 示波器设置: 通道1接AD5932 MSBOUT，通道2接DAC63001 OUT0\n");
+  fprintf(stderr, "  - 时序: 网络/增益配置 → 频率扫频 → 增益扫描\n\n");
   
-  fprintf(stderr, "仅信号生成测试示例:\n");
-  fprintf(stderr, "  %s -g --start-freq 500000 --delta-freq 50000 --num-incr 5 --interval-val 2 --wave-type 2\n", program_name);
-  fprintf(stderr, "  -- 仅测试DDS信号生成\n");
-  fprintf(stderr, "  -- 扫频参数: 500kHz起始, 50kHz步长, 5次频率递增, 每个频率输出2次, 方波输出\n");
-  fprintf(stderr, "  -- 扫频范围: 500kHz -> 750kHz, 共6个频率点\n");
-  fprintf(stderr, "  -- 总波形数量: 6 × 2 = 12 个波形\n\n");
+  fprintf(stderr, "2. 带缓存的收发测试:\n");
+  fprintf(stderr, "  %s -i -c --start-freq 300 --delta-freq 0 \\\n", program_name);
+  fprintf(stderr, "     --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n");
+  fprintf(stderr, "  - 固定扫频范围: 300Hz，共输出6个波形\n");
+  fprintf(stderr, "  - 增益扫描: 00dB → 60dB，持续60ms\n");
+  fprintf(stderr, "  - 启用数据包缓存(500MB)，测试结束后详细分析\n\n");
   
-  fprintf(stderr, "仅信号接收测试示例:\n");
-  fprintf(stderr, "  %s -r --start-gain 0 --end-gain 60 --duration-us 600000\n", program_name);
-  fprintf(stderr, "  -- 仅测试信号接收和增益控制\n");
-  fprintf(stderr, "  -- 增益扫描: 0dB -> 60dB, 持续0.6秒\n");
-  fprintf(stderr, "  -- 对应电压: 1.1V -> 0.5V (AD8338 VGAIN控制电压)\n\n");
+  fprintf(stderr, "3. 仅信号生成测试:\n");
+  fprintf(stderr, "  %s -g --start-freq 500000 --delta-freq 50000 \\\n", program_name);
+  fprintf(stderr, "     --num-incr 5 --interval-val 2 --wave-type 2\n");
+  fprintf(stderr, "  - DDS扫频: 500kHz → 750kHz，共6个频率点\n");
+  fprintf(stderr, "  - 方波输出，共12个波形\n\n");
   
-  fprintf(stderr, "固定频率输出示例:\n");
+  fprintf(stderr, "4. 带缓存的信号接收测试:\n");
+  fprintf(stderr, "  %s -r -c --start-gain 0 --end-gain 60 --duration-us 600000\n", program_name);
+  fprintf(stderr, "  - 增益扫描: 0dB → 60dB，持续0.6秒\n");
+  fprintf(stderr, "  - AD8338增益控制电压: 1.1V → 0.5V\n");
+  fprintf(stderr, "  - 所有网络数据包缓存供后续分析\n\n");
+  
+  fprintf(stderr, "5. 固定频率输出测试:\n");
   fprintf(stderr, "  %s --start-freq 2000000 --delta-freq 0 --num-incr 1 --interval-val 50\n", program_name);
-  fprintf(stderr, "  -- 由于频率步长为0，芯片将输出固定频率波形\n");
-  fprintf(stderr, "  -- 输出频率: 2MHz固定频率\n");
-  fprintf(stderr, "  -- 总波形数量: 2 × 50 = 100 个相同频率的波形\n\n");
+  fprintf(stderr, "  - 固定2MHz频率输出 (频率步长=0)\n");
+  fprintf(stderr, "  - 共100个相同频率的波形\n\n");
   
-  fprintf(stderr, "高增益扫描示例:\n");
+  fprintf(stderr, "6. 高增益灵敏度测试:\n");
   fprintf(stderr, "  %s --start-gain 20 --end-gain 80 --duration-us 3000000\n", program_name);
-  fprintf(stderr, "  -- 高增益范围测试: 20dB -> 80dB\n");
-  fprintf(stderr, "  -- 持续时间: 3秒缓慢增益变化\n");
-  fprintf(stderr, "  -- 应用场景: 弱信号检测和动态范围测试\n\n");
+  fprintf(stderr, "  - 高增益范围: 20dB → 80dB\n");
+  fprintf(stderr, "  - 3秒缓慢增益变化\n");
+  fprintf(stderr, "  - 适用于弱信号检测和动态范围测试\n\n");
   
-  fprintf(stderr, "MCLK倍数影响说明:\n");
-  fprintf(stderr, "  -- MCLK倍数影响每个频率点的持续时间:\n");
-  fprintf(stderr, "     0 (1x):   标准速度\n");
-  fprintf(stderr, "     1 (5x):   5倍持续时间\n");
-  fprintf(stderr, "     2 (100x): 100倍持续时间 (慢速扫频)\n");
-  fprintf(stderr, "     3 (500x): 500倍持续时间 (极慢速扫频)\n\n");
+  fprintf(stderr, "MCLK倍频系数影响:\n");
+  fprintf(stderr, "  0 (1倍):   每个频率点标准持续时间\n");
+  fprintf(stderr, "  1 (5倍):   每个频率点持续时间延长5倍\n");
+  fprintf(stderr, "  2 (100倍): 每个频率点持续时间延长100倍 (慢速扫频)\n");
+  fprintf(stderr, "  3 (500倍): 每个频率点持续时间延长500倍 (极慢速扫频)\n\n");
   
   fprintf(stderr, "硬件依赖说明:\n");
-  fprintf(stderr, "  -- DDS信号生成: AD5932芯片 (SPI控制)\n");
-  fprintf(stderr, "  -- 增益控制: DAC63001 + AD8338 VGA (I2C控制)\n");
-  fprintf(stderr, "  -- 数据采集: FPGA网络数据流 (UDP端口5030)\n");
-  fprintf(stderr, "  -- 网络接口: eth0 (默认)\n");
+  fprintf(stderr, "  - DDS信号生成: AD5932芯片 (SPI控制)\n");
+  fprintf(stderr, "  - 增益控制: DAC63001 + AD8338 VGA (I2C控制)\n");
+  fprintf(stderr, "  - 数据采集: FPGA网络数据流 (UDP端口5030)\n");
+  fprintf(stderr, "  - 网络接口: eth0 (默认)\n");
+  
+  fprintf(stderr, "\n性能说明:\n");
+  fprintf(stderr, "  - 缓存模式适用于高数据率场景 (>10 MB/s)\n");
+  fprintf(stderr, "  - 实时模式适用于需要即时数据处理的场景\n");
+  fprintf(stderr, "  - 默认缓存大小: 500MB (支持约20秒的20 MB/s数据流)\n");
+  fprintf(stderr, "  - 混合模式同时提供实时监控和事后分析能力\n");
 }
 
 /**
@@ -591,6 +743,8 @@ int parse_arguments(int argc, char *argv[], TestConfig *config) {
       return 1;
     } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--integrated") == 0) {
       config->use_transceive_func = true;
+    } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--with-cache") == 0) {
+      config->test_with_cache = true;
     }
     else {
       fprintf(stderr, "错误: 未知参数 '%s'\n", argv[i]);
@@ -650,6 +804,12 @@ int main(int argc, char *argv[]) {
     ret = test_transceive_function(&config);
     if (ret == 0) {
         printf("⏳ 收发一体测试运行中（%d 秒）...\n", config.test_duration_sec);
+    }
+  } else if (config.test_with_cache) {
+    // 带缓存的综合测试
+    ret = test_transceive_function_with_cache(&config);
+    if (ret == 0) {
+      printf("⏳ 带缓存的综合测试运行中（%d 秒）...\n", config.test_duration_sec);
     }
   } else {
     // 综合测试
