@@ -156,28 +156,30 @@ int transmit_and_receive_single_beam(
     return -1;
   }
 
+  // 4. 配置GPIO触发以同步增益扫描开始
+  if (dac63001_enable_gpio_start_stop_trigger() < 0) {
+    LOG_ERROR("DAC GPIO触发配置失败\n");
+    dac63001_close();
+    return -1;
+  }
   
-  // 4. 启动FPGA发送网络包 + 启动网络监听（先于扫频开始）
+  // 5. 启动FPGA发送网络包 + 启动网络监听（先于扫频开始）
   net_listener_start(eth_ifname, callback);
   fpga_set_acq_enable(true);
   
-  // 5. 启动扫频信号，并同步等待扫频结束
+  // 6. 启动扫频信号，并同步等待扫频结束(同时也是增益输出的触发信号)
   ad5932_start_sweep();
   LOG_INFO("扫频信号开始生成...\n");
   
+  // 7. 扫频结束后硬件 GPIO 触发立即启动增益扫描波形
   while (!ad5932_is_sweep_done()) {
-    usleep(5); // 5微秒轮询等待
+    usleep(1); // 1微秒轮询等待
   }
   LOG_INFO("扫频信号生成完成\n");
   
-  // 6. 扫频结束后，立即启动增益扫描波形
-  LOG_INFO("启动增益扫描...\n");
-  if (start_gain != end_gain) {
-    dac63001_start_waveform();
-    usleep(5000); // 等待增益扫描完成
-    dac63001_stop_waveform();
-    LOG_INFO("增益扫描完成\n");
-  }
+  // 8. 结束增益扫描
+  usleep(2000); // 2ms 后输出
+  dac63001_stop_waveform();
   
   // 8. 停止FPGA发送网络包
   fpga_set_acq_enable(false);

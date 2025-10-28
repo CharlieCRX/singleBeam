@@ -31,6 +31,11 @@ typedef enum {
   REG_DDS_STB         = 0x0012,   // DDS待机状态，0:正常工作，1:待机
   REG_DDS_SYNCOUT     = 0x0013,   // DDS同步输出信号，0:未完成信号发送，1:已完成发送
 
+  // DAC 控制寄存器
+  REG_DAC_CTRL        = 0x0014,   // DAC GPIO输出触发
+  REG_DAC_CTRL_EN     = 0x0015,   // DAC GPIO控制使能
+  REG_DAC_TIMER       = 0x0016,   // DAC 持续输出时间，单位40ns
+
 } fpga_reg_addr_t;
 
 
@@ -95,5 +100,10 @@ int fpga_initialize_udp_header(S_udp_header_params *params);
 bool fpga_is_dds_standby_up(void);
 void fpga_set_dds_ctrl_pulse(bool enable);
 void fpga_set_dds_standby(bool enable);
+
+// DAC 控制函数
+void fpga_set_dac_ctrl_en(bool enable);
+bool fpga_is_dac_ctrl_en(void);
+void fpga_set_dac_duration_timer_ns(uint32_t ns);
 
 #endif // DEV_FPGA_H

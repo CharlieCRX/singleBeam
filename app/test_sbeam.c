@@ -33,6 +33,8 @@ typedef struct {
   bool test_generate_only;
   bool test_receive_only;
   uint32_t test_duration_sec;
+
+  bool use_transceive_func; // 是否使用收发一体函数
 } TestConfig;
 
 // 全局统计变量
@@ -392,6 +394,59 @@ int test_integrated_operation(const TestConfig *config) {
   return 0;
 }
 
+
+/**
+ * @brief 测试收发一体函数
+ */
+int test_transceive_function(const TestConfig *config) {
+  printf("\n🔄 开始测试收发一体函数...\n");
+  
+  // 准备 DDS 配置
+  DDSConfig dds_config = {
+      .start_freq = config->start_freq,
+      .delta_freq = config->delta_freq,
+      .num_incr = config->num_incr,
+      .wave_type = config->wave_type,
+      .mclk_mult = config->mclk_mult,
+      .interval_val = config->interval_val,
+      .positive_incr = config->positive_incr
+  };
+  
+  printf("📊 DDS配置: %u Hz起始, %u Hz步长, %u次递增\n", 
+         dds_config.start_freq, dds_config.delta_freq, dds_config.num_incr);
+  printf("📊 增益配置: %d dB -> %d dB, 持续时间: %.3f秒\n",
+         config->start_gain, config->end_gain, 
+         config->gain_duration_us / 1000000.0f);
+  
+  // 计算预期扫频范围
+  uint32_t final_freq = dds_config.start_freq + 
+             (dds_config.positive_incr ? 1 : -1) * 
+             dds_config.delta_freq * dds_config.num_incr;
+  
+  printf("🎯 预期扫频范围: %u Hz -> %u Hz\n", 
+         dds_config.start_freq, final_freq);
+  printf("🎯 频率点数: %d\n", dds_config.num_incr + 1);
+  
+  // 调用收发一体函数
+  printf("🎛️  调用 transmit_and_receive_single_beam()...\n");
+  
+  int result = transmit_and_receive_single_beam(
+      &dds_config,
+      config->start_gain,
+      config->end_gain,
+      config->gain_duration_us,
+      test_packet_callback
+  );
+  
+  if (result == 0) {
+      printf("✅ 收发一体函数执行成功\n");
+  } else {
+      printf("❌ 收发一体函数执行失败，错误码: %d\n", result);
+  }
+  
+  return result;
+}
+
 /**
  * @brief 打印使用说明
  */
@@ -405,6 +460,7 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "测试模式选项:\n");
   fprintf(stderr, "  -g, --generate-only     仅测试信号生成功能 (AD5932 DDS)\n");
   fprintf(stderr, "  -r, --receive-only      仅测试信号接收功能 (DAC63001增益控制)\n");
+  fprintf(stderr, "  -i, --integrated        使用收发一体函数进行测试 (推荐)\n");  // 新增这行
   fprintf(stderr, "  -t, --time SECONDS      测试持续时间 (默认: 10秒)\n");
   fprintf(stderr, "  -h, --help              显示此帮助信息\n\n");
   
@@ -426,6 +482,13 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "  -- 扫频范围: 起始频率 -> 起始频率 + (递增次数 × 频率步长)\n");
   fprintf(stderr, "  -- 频率点数: 递增次数 + 1\n");
   fprintf(stderr, "  -- 总波形数量: (递增次数 + 1) × 持续周期\n\n");
+
+  fprintf(stderr, "收发一体函数测试示例:\n");
+  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 600000\n", program_name);
+  fprintf(stderr, "  -- 使用收发一体函数进行完整测试\n");
+  fprintf(stderr, "  -- 扫频参数: 300Hz 固定输出频率，总共输出 6 个波形数据 \n");
+  fprintf(stderr, "  -- 增益扫描: 0dB -> 80dB, 持续6ms\n");
+  fprintf(stderr, "  -- 时序: 先配置网络和增益，然后启动扫频，扫频完成后立即启动增益扫描\n\n");
   
   fprintf(stderr, "综合测试示例:\n");
   fprintf(stderr, "  %s\n", program_name);
@@ -525,7 +588,10 @@ int parse_arguments(int argc, char *argv[], TestConfig *config) {
     } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
       print_usage(argv[0]);
       return 1;
-    } else {
+    } else if (strcmp(argv[i], "-i") == 0 || strcmp(argv[i], "--integrated") == 0) {
+      config->use_transceive_func = true;
+    }
+    else {
       fprintf(stderr, "错误: 未知参数 '%s'\n", argv[i]);
       print_usage(argv[0]);
       return -1;
@@ -577,6 +643,12 @@ int main(int argc, char *argv[]) {
     ret = test_signal_reception(&config);
     if (ret == 0) {
       printf("⏳ 数据接收中（%d 秒）...\n", config.test_duration_sec);
+    }
+  } else if (config.use_transceive_func) {
+    // 使用收发一体函数测试
+    ret = test_transceive_function(&config);
+    if (ret == 0) {
+        printf("⏳ 收发一体测试运行中（%d 秒）...\n", config.test_duration_sec);
     }
   } else {
     // 综合测试

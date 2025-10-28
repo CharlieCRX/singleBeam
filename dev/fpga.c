@@ -279,3 +279,30 @@ void fpga_set_dds_standby(bool enable) {
   LOG_INFO("FPGA set DDS standby: %s\n", enable ? "ENABLED" : "DISABLED");
   i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DDS_STB, val);
 }
+
+
+// DAC 控制函数
+void fpga_set_dac_ctrl_en(bool enable) {
+  if (enable) {
+    LOG_INFO("FPGA DAC control: ENABLE\n");
+    i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, 0x0001);
+  } else {
+    LOG_INFO("FPGA DAC control: DISABLE\n");
+    i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, 0x0000);
+  }
+}
+
+
+bool fpga_is_dac_ctrl_en(void) {
+  uint32_t val = 0;
+  if (i2c_hal_fpga_read(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, &val) < 0) {
+    LOG_ERROR("Failed to read DAC ENABLE pulse from FPGA.\n");
+    return false;
+  }
+  return (val & 0x1) != 0; 
+}
+
+void fpga_set_dac_duration_timer_ns(uint32_t ns) {
+  LOG_INFO("配置DAC触发波形生成后，等待 %d ns后停止\n", ns * 40);
+  i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DAC_TIMER, ns);
+}

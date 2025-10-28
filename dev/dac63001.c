@@ -1,6 +1,7 @@
 #include "dac63001.h"
 #include "../protocol/i2c_hal.h"
 #include "../utils/log.h"
+#include "../dev/fpga.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <math.h>
@@ -153,6 +154,39 @@ int dac63001_stop_waveform(void) {
   LOG_INFO("停止增益函数生成\n");
   return i2c_hal_write_reg16(DAC63001_I2C_ADDR, COMMON_DAC_TRIG, 0x0000);
 }
+
+int dac63001_enable_gpio_start_stop_trigger(void) {
+  LOG_INFO("启用GPIO引脚触发DAC函数开始/停止\n");
+
+  LOG_INFO("开启FPGA上的GPIO控制功能\n");
+  fpga_set_dac_ctrl_en(true);
+  fpga_set_dac_duration_timer_ns(12500); // 持续0.5ms
+  
+  if (!fpga_is_dac_ctrl_en()) {
+    LOG_ERROR("GPIO控制功能FPGA启动失败！\n");
+    return -1;
+  }
+  
+  uint16_t gpio_config = 0x0000;
+
+  // 配置GPIO触发
+  uint16_t gpi_en = 1;        // 位0: 使能GPIO输入模式
+  uint16_t gpi_config = 0x9;  // 位4-1: 1001 = 启动/停止波形生成
+  uint16_t gpi_ch_sel = 0x8;  // 位8-5: 1000 = 选择通道0 (位3=1)
+  uint16_t gpo_en = 0;        // 位13: 禁用GPIO输出模式
+  uint16_t gf_en = 0;         // 位15: 禁用毛刺滤波器（更快响应）
+
+
+  // 构建配置值
+  gpio_config |= (gpi_en << 0);      // 位0: GPI-EN
+  gpio_config |= (gpi_config << 1);  // 位4-1: GPI-CONFIG
+  gpio_config |= (gpi_ch_sel << 5);  // 位8-5: GPI-CH-SEL
+  gpio_config |= (gpo_en << 13);     // 位13: GPO-EN
+  gpio_config |= (gf_en << 15);      // 位15: GF-EN
+
+  return i2c_hal_write_reg16(DAC63001_I2C_ADDR, GPIO_CONFIG_REG, gpio_config);
+}
+
 
 void dac63001_close(void) {
   i2c_hal_close();

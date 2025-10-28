@@ -16,6 +16,7 @@
 #define DAC_0_MARGIN_LOW        0x14
 #define DAC_0_FUNC_CONFIG       0x18
 #define COMMON_DAC_TRIG         0x21
+#define GPIO_CONFIG_REG         0x24
 
 // 外部参考电压值（单位：伏）
 #define DAC63001_EXT_REF_VOLTAGE         1.25f
@@ -96,6 +97,11 @@ int dac63001_start_waveform(void);
  * @brief 停止DAC函数生成
  */
 int dac63001_stop_waveform(void);
+
+/*
+* @brief 启用GPIO引脚触发DAC函数开始/停止
+*/
+int dac63001_enable_gpio_start_stop_trigger(void);
 
 /**
  * @brief 关闭DAC63001驱动
