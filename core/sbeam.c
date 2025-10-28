@@ -109,3 +109,15 @@ void receive_single_beam_response(
   fpga_set_acq_enable(false);
   dac63001_close();
 }
+
+
+
+int transmit_and_receive_single_beam(
+  const DDSConfig *cfg,
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback callback
+) {
+  return 0;
+}

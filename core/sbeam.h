@@ -53,4 +53,13 @@ void receive_single_beam_response(
   NetPacketCallback callback
 );
 
+
+int transmit_and_receive_single_beam(
+  const DDSConfig *cfg,
+  uint16_t start_gain,
+  uint16_t end_gain,
+  uint32_t gain_duration_us,
+  NetPacketCallback callback
+);
+
 #endif  // SBEAM_H

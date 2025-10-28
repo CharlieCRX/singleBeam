@@ -383,10 +383,6 @@ int test_integrated_operation(const TestConfig *config) {
     return -1;
   }
   
-  // 等待一小段时间让信号生成开始
-  printf("⏳ 等待信号生成启动...\n");
-  sleep(2);
-  
   // 然后启动信号接收
   if (test_signal_reception(config) != 0) {
     return -1;
