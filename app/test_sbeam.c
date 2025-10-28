@@ -484,10 +484,11 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "  -- 总波形数量: (递增次数 + 1) × 持续周期\n\n");
 
   fprintf(stderr, "收发一体函数测试示例:\n");
-  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 600000\n", program_name);
+  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n", program_name);
   fprintf(stderr, "  -- 使用收发一体函数进行完整测试\n");
   fprintf(stderr, "  -- 扫频参数: 300Hz 固定输出频率，总共输出 6 个波形数据 \n");
-  fprintf(stderr, "  -- 增益扫描: 0dB -> 80dB, 持续6ms\n");
+  fprintf(stderr, "  -- 增益扫描: 0dB -> 80dB, 持续60ms\n");
+  fprintf(stderr, "  -- 示波器测试: 通道1测量ad5932的MSBOUT, 通道2测量dac63001的OUT0, 水平时长设置20ms, 通道1触发电压为1.5V左右\n");
   fprintf(stderr, "  -- 时序: 先配置网络和增益，然后启动扫频，扫频完成后立即启动增益扫描\n\n");
   
   fprintf(stderr, "综合测试示例:\n");
