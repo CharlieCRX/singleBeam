@@ -382,8 +382,8 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
     return -1;
   }
 
-  if (gain_duration_us < 6000 || gain_duration_us > 17000000) {
-    LOG_ERROR("持续时间必须在 6000 微秒到 17 秒之间\n");
+  if (gain_duration_us < 1000 || gain_duration_us > 17000000) {
+    LOG_ERROR("持续时间必须在 1000 微秒到 17 秒之间\n");
     return -1;
   }
 

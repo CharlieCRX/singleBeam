@@ -258,7 +258,7 @@ bool fpga_is_dds_standby_up(void) {
   uint32_t val = 0;
   if (i2c_hal_fpga_read(FPGA_I2C_SLAVE, REG_DDS_STB, &val) < 0) {
     LOG_ERROR("Failed to read DDS STANDVY pulse from FPGA.\n");
-    return false;
+    exit(-1);
   }
   return (val & 0x1) != 0;
 }
@@ -297,7 +297,7 @@ bool fpga_is_dac_ctrl_en(void) {
   uint32_t val = 0;
   if (i2c_hal_fpga_read(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, &val) < 0) {
     LOG_ERROR("Failed to read DAC ENABLE pulse from FPGA.\n");
-    return false;
+    exit(-1);
   }
   return (val & 0x1) != 0; 
 }

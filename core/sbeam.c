@@ -119,7 +119,6 @@ void receive_single_beam_response_with_cache(
     LOG_INFO("起始和结束增益相同，设置固定电压 %.3fV\n", voltage);
     dac63001_set_fixed_voltage(voltage);
     LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
-    dac63001_close();
     return 1;
   } else {
     if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
@@ -132,8 +131,21 @@ void receive_single_beam_response_with_cache(
   usleep(5000); // 5 ms 延迟确保波形开始
   dac63001_stop_waveform();
   usleep(5000); // 5 ms 延迟确保波形停止
+
+  // 延迟增益持续的时间+50ms后，停止FPGA发送网络包
+  usleep(gain_duration_us + 50000);
   fpga_set_acq_enable(false);
+  LOG_INFO("单波束收发流程完成\n");
+
+  // 停止网络监听（这会触发缓存回调）
+  sbeam_stop_listener_with_cache(eth_ifname);
+
+  // 清理资源
+  ad5932_reset();
+  ad5932_set_standby(false);
   dac63001_close();
+  
+  return 0;
 }
 
 
@@ -185,7 +197,9 @@ int transmit_and_receive_single_beam_with_cache(
     LOG_INFO("起始和结束增益相同，直接设置固定电压进行接收信号 %.3fV\n", voltage);
     dac63001_set_fixed_voltage(voltage);
     LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
-    dac63001_close();
+
+    LOG_INFO("固定增益时，不启用FPGA的触发锯齿波增益波形");
+    fpga_set_dac_ctrl_en(false);
   } else {
     // 锯齿波增益扫描模式，仅需配置
     if (dac63001_set_gain_sweep(start_gain, end_gain, gain_duration_us) < 0) {
@@ -232,7 +246,8 @@ int transmit_and_receive_single_beam_with_cache(
   }
   LOG_INFO("扫频信号生成完成，同时产生增益控制信号接收数据\n");
   
-  // 10. 停止FPGA发送网络包
+  // 10. 延迟增益持续的时间+50ms后，停止FPGA发送网络包
+  usleep(gain_duration_us + 50000);
   fpga_set_acq_enable(false);
   LOG_INFO("单波束收发流程完成\n");
 
