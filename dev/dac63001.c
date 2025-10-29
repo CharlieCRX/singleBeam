@@ -158,9 +158,9 @@ int dac63001_stop_waveform(void) {
 int dac63001_enable_gpio_start_stop_trigger(void) {
   LOG_INFO("启用GPIO引脚触发DAC函数开始/停止\n");
 
-  LOG_INFO("开启FPGA上的GPIO控制功能\n");
+  LOG_INFO("开启FPGA上的GPIO控制功能\n"); 
   fpga_set_dac_ctrl_en(true);
-  fpga_set_dac_duration_timer_ns(12500); // 持续0.5ms
+  fpga_set_dac_duration_timer_ns(12500); // 持续0.5ms，适用于产生1ms - 2.5ms左右的锯齿波
   
   if (!fpga_is_dac_ctrl_en()) {
     LOG_ERROR("GPIO控制功能FPGA启动失败！\n");
@@ -382,8 +382,8 @@ int dac63001_set_gain_sweep(uint16_t start_gain, uint16_t end_gain, uint32_t gai
     return -1;
   }
 
-  if (gain_duration_us < 1000 || gain_duration_us > 17000000) {
-    LOG_ERROR("持续时间必须在 1000 微秒到 17 秒之间\n");
+  if (gain_duration_us < 1000 || gain_duration_us > 250000) {
+    LOG_ERROR("持续时间必须在 1000 微秒到 250 毫秒之间\n");
     return -1;
   }
 

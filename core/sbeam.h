@@ -84,9 +84,9 @@ void receive_single_beam_response(
  *   - 如果增益不同，则配置锯齿波增益扫描，并在扫频结束后启动增益扫描。
  *
  * @param cfg               DDS扫频配置参数
- * @param start_gain        初始增益值
+ * @param start_gain        初始增益值(小于结束增益值)
  * @param end_gain          结束增益值  
- * @param gain_duration_us  增益扫描持续时间（微秒）
+ * @param gain_duration_us  增益扫描持续时间（1ms - 250ms）
  * @param callback          网络数据包回调处理函数
  * @return int              执行结果：0-成功，其他-错误码
  */
@@ -114,7 +114,65 @@ void receive_single_beam_response_with_cache(
 
 
 /**
- * @brief 完整的单波束信号收发处理（带缓存）
+ * @brief 执行单波束收发流程（支持缓存回调模式）
+ * 
+ * @details
+ * 该函数负责控制 DDS（AD5932）、DAC（DAC63001）、FPGA 及网络模块，
+ * 实现单次波束发射与同步接收的数据采集过程。
+ * 支持两种模式：
+ *  - **实时回调模式**：每接收到网络包立即触发回调处理。
+ *  - **缓存回调模式**：先将网络数据缓存，再由 cache_cb 回调统一处理。
+ * 
+ * 函数主要执行以下步骤：
+ *  1. 初始化 FPGA 并写入 UDP/IP 头部配置；
+ *  2. 配置 DDS（AD5932）的扫频参数；
+ *  3. 初始化 DAC（DAC63001）并设置接收增益；
+ *  4. 根据增益模式选择固定电压或 GPIO 触发扫描；
+ *  5. 启动网络监听（实时或缓存模式）；
+ *  6. 启动 FPGA 采集使能；
+ *  7. 启动 DDS 扫频信号输出；
+ *  8. 扫频完成后自动触发 DAC 增益波形输出；
+ *  9. 等待接收过程完成后，关闭采集；
+ * 10. 停止网络监听、释放相关硬件资源。
+ * 
+ * 本函数适用于一次性单波束的完整收发流程控制，常用于自动化测试或信号链验证。
+ * 
+ * @param[in] cfg
+ *      DDS 配置参数结构体，包含起始频率、步进频率、增量数、MCLK 倍频、波形类型等。
+ * @param[in] start_gain
+ *      接收增益起始值（单位：dB）。  
+ *      若与 end_gain 相同，则启用固定增益模式。
+ *      不能大于结束增益。
+ * @param[in] end_gain
+ *      接收增益结束值（单位：dB）。  
+ *      若与 start_gain 不同，则启用锯齿波扫描模式。
+ * @param[in] gain_duration_us
+ *      增益扫描总时长（单位：微秒），用于 DAC 输出波形持续时间控制。范围在 1ms - 250ms 
+ * @param[in] packet_cb(可以为空)
+ *      网络包实时回调函数指针，用于在接收 FPGA 数据包时进行处理。
+ *      若使用缓存模式，该回调依然会被调用，但缓存优先。
+ * @param[in] cache_cb
+ *      网络缓存回调函数指针，用于缓存模式下的数据统一处理。
+ *      若为 NULL，则仅使用实时包回调。
+ * @param[in] cache_size（最大为 50 * 1024 * 1024 = 50Mb）
+ *      缓存区大小（字节），仅在 cache_cb 不为空时生效。
+ * 
+ * @return
+ *  返回执行状态码：
+ *  - `0`：收发流程执行成功；
+ *  - `-1`：任意初始化、配置或启动阶段失败。
+ * 
+ * @note
+ * - 调用前需确保 `i2c_dev`、`eth_ifname`、`udp_header_params` 已正确初始化；
+ * - 若启用缓存模式，需保证系统内存充足；
+ * - 函数执行过程为阻塞式，直到扫频和接收流程完全结束；
+ * - 在错误退出时会自动关闭 DAC 和网络监听。
+ * 
+ * @see
+ *  - `ad5932_*()` 系列函数：用于配置扫频信号；
+ *  - `dac63001_*()` 系列函数：用于设置接收增益；
+ *  - `fpga_*()` 系列函数：用于控制数据采集；
+ *  - `net_listener_start_with_cache()`：网络缓存监听启动接口。
  */
 int transmit_and_receive_single_beam_with_cache(
   const DDSConfig *cfg,

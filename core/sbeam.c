@@ -198,7 +198,7 @@ int transmit_and_receive_single_beam_with_cache(
     dac63001_set_fixed_voltage(voltage);
     LOG_INFO("当前增益: %d dB (%.3fV)\n", start_gain, voltage);
 
-    LOG_INFO("固定增益时，不启用FPGA的触发锯齿波增益波形");
+    LOG_INFO("固定增益时，不启用FPGA的触发锯齿波增益波形\n");
     fpga_set_dac_ctrl_en(false);
   } else {
     // 锯齿波增益扫描模式，仅需配置

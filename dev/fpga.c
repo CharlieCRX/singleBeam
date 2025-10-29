@@ -284,10 +284,10 @@ void fpga_set_dds_standby(bool enable) {
 // DAC 控制函数
 void fpga_set_dac_ctrl_en(bool enable) {
   if (enable) {
-    LOG_INFO("FPGA DAC control: ENABLE\n");
+    LOG_INFO("FPGA DAC control: ENABLED\n");
     i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, 0x0001);
   } else {
-    LOG_INFO("FPGA DAC control: DISABLE\n");
+    LOG_INFO("FPGA DAC control: DISABLED\n");
     i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_DAC_CTRL_EN, 0x0000);
   }
 }
