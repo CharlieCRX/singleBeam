@@ -47,7 +47,8 @@ TARGETS     := \
 	$(BUILD_DIR)/i2c_fpga_test \
 	$(BUILD_DIR)/fpga_udp_test \
 	$(BUILD_DIR)/ad8338_gain_sweep_with_resistors \
-	$(BUILD_DIR)/sbeam_test
+	$(BUILD_DIR)/sbeam_test \
+	$(BUILD_DIR)/test_lib_sbeam
 
 # ======================================================
 # 默认目标
@@ -89,6 +90,14 @@ $(BUILD_DIR)/ad8338_gain_sweep_with_resistors: $(BUILD_DIR)/app/ad8338_gain_swee
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # ======================================================
+# 库调用测试程序（使用静态库）
+# ======================================================
+$(BUILD_DIR)/test_lib_sbeam: app/test_lib_sbeam.c $(STATIC_LIB)
+	@echo "→ 构建库调用测试程序（使用静态库）$@"
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -o $@ app/test_lib_sbeam.c $(STATIC_LIB) $(LDFLAGS)
+
+# ======================================================
 # 通用编译规则
 # ======================================================
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
@@ -125,4 +134,11 @@ print-vars:
 	@echo "SHARED_LIB: $(SHARED_LIB)"
 	@echo "TARGETS: $(TARGETS)"
 
-.PHONY: all clean install print-vars
+# ======================================================
+# 专门用于库测试的目标
+# ======================================================
+.PHONY: lib-test
+lib-test: $(BUILD_DIR)/test_lib_sbeam
+	@echo "✅ 库调用测试程序已构建（使用静态库）"
+
+.PHONY: all clean install print-vars lib-test
