@@ -2,6 +2,7 @@
 #include "../dev/ad5932.h"
 #include "../dev/dac63001.h"
 #include "../dev/fpga.h"
+#include "../dev/net_listener.h"  // 只在实现文件中包含
 #include "../utils/log.h"
 #include <pthread.h>
 #include <unistd.h>

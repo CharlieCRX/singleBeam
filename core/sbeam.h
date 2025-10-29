@@ -3,7 +3,16 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "../dev/net_listener.h"
+
+#define NET_BUFFER_SIZE 2048
+#define DEFAULT_CACHE_SIZE (500 * 1024 * 1024) // 500MB 默认缓存大小
+
+// 数据包回调类型 - 在sbeam.h中重新定义
+typedef void (*NetPacketCallback)(const uint8_t *data, int length);
+
+// 缓存完成回调类型 - 在sbeam.h中重新定义
+typedef void (*NetCacheCallback)(const uint8_t *cache_data, uint32_t total_packets, 
+                                uint64_t total_bytes, const uint32_t *packet_lengths);
 
 typedef struct {
   uint32_t start_freq;     // 起始频率 (Hz)
@@ -167,12 +176,6 @@ void receive_single_beam_response_with_cache(
  * - 若启用缓存模式，需保证系统内存充足；
  * - 函数执行过程为阻塞式，直到扫频和接收流程完全结束；
  * - 在错误退出时会自动关闭 DAC 和网络监听。
- * 
- * @see
- *  - `ad5932_*()` 系列函数：用于配置扫频信号；
- *  - `dac63001_*()` 系列函数：用于设置接收增益；
- *  - `fpga_*()` 系列函数：用于控制数据采集；
- *  - `net_listener_start_with_cache()`：网络缓存监听启动接口。
  */
 int transmit_and_receive_single_beam_with_cache(
   const DDSConfig *cfg,
