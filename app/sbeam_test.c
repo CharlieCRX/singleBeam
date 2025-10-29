@@ -598,15 +598,12 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "  无 (默认执行完整综合测试)\n\n");
   
   fprintf(stderr, "测试模式选项:\n");
-  fprintf(stderr, "  -g, --generate-only     仅测试信号生成功能 (AD5932 DDS)\n");
-  fprintf(stderr, "  -r, --receive-only      仅测试信号接收功能 (DAC63001增益控制)\n");
-  fprintf(stderr, "  -i, --integrated        使用收发一体函数进行测试 (推荐)\n");
   fprintf(stderr, "  -c, --with-cache        启用数据包缓存模式 (默认500MB)\n");
   fprintf(stderr, "  -t, --time SECONDS      测试持续时间 (默认: 10秒)\n");
   fprintf(stderr, "  -h, --help              显示此帮助信息\n\n");
   
   fprintf(stderr, "DDS 信号生成参数 (AD5932):\n");
-  fprintf(stderr, "  --start-freq HZ         起始频率 (默认: 1000000 = 1MHz)\n");
+  fprintf(stderr, "  --start-freq HZ         起始频率Hz (默认: 100000 = 100kHz)\n");
   fprintf(stderr, "  --delta-freq HZ         频率递增步长 (0表示固定频率)\n");
   fprintf(stderr, "  --num-incr COUNT        频率递增次数 (范围 2~4095, 默认: 2)\n");
   fprintf(stderr, "  --wave-type TYPE        输出波形类型 (0=正弦波, 1=三角波, 2=方波, 默认: 2)\n");
@@ -617,7 +614,7 @@ void print_usage(const char *program_name) {
   fprintf(stderr, "增益控制参数 (DAC63001 + AD8338):\n");
   fprintf(stderr, "  --start-gain DB         起始增益值 (范围 0-80 dB, 默认: 0dB)\n");
   fprintf(stderr, "  --end-gain DB           结束增益值 (范围 0-80 dB, 默认: 80dB)\n");
-  fprintf(stderr, "  --duration-us US        增益扫描持续时间 (范围 6000-17000000 us, 默认: 1000000 = 1秒)\n\n");
+  fprintf(stderr, "  --duration-us US        增益扫描持续时间us (范围 1000 ~ 250000 us)\n\n");
   
   fprintf(stderr, "扫频参数说明:\n");
   fprintf(stderr, "  - 扫频范围: 起始频率 -> 起始频率 + (递增次数 × 频率步长)\n");
@@ -631,43 +628,35 @@ void print_usage(const char *program_name) {
 
   fprintf(stderr, "使用示例:\n\n");
   
-  fprintf(stderr, "1. 收发一体函数测试 (推荐):\n");
-  fprintf(stderr, "  %s -i --start-freq 300 --delta-freq 0 --num-incr 2 \\\n", program_name);
-  fprintf(stderr, "     --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n");
-  fprintf(stderr, "  - 固定频率输出: 300Hz，共输出6个波形\n");
-  fprintf(stderr, "  - 增益扫描: 0dB → 80dB，持续60ms\n");
-  fprintf(stderr, "  - 示波器设置: 通道1接AD5932 MSBOUT，通道2接DAC63001 OUT0\n");
-  fprintf(stderr, "  - 时序: 网络/增益配置 → 频率扫频 → 增益扫描\n\n");
-  
-  fprintf(stderr, "2. 带缓存的收发测试:\n");
-  fprintf(stderr, "  %s -i -c --start-freq 300 --delta-freq 0 \\\n", program_name);
+  fprintf(stderr, "带缓存的收发测试:\n");
+  fprintf(stderr, "  %s -c --start-freq 300 --delta-freq 0 \\\n", program_name);
   fprintf(stderr, "     --num-incr 2 --interval-val 2 --start-gain 0 --end-gain 80 --duration-us 60000\n");
   fprintf(stderr, "  - 固定扫频范围: 300Hz，共输出6个波形\n");
   fprintf(stderr, "  - 增益扫描: 00dB → 60dB，持续60ms\n");
   fprintf(stderr, "  - 启用数据包缓存(500MB)，测试结束后详细分析\n\n");
   
-  fprintf(stderr, "3. 仅信号生成测试:\n");
-  fprintf(stderr, "  %s -g --start-freq 500000 --delta-freq 50000 \\\n", program_name);
-  fprintf(stderr, "     --num-incr 5 --interval-val 2 --wave-type 2\n");
-  fprintf(stderr, "  - DDS扫频: 500kHz → 750kHz，共6个频率点\n");
-  fprintf(stderr, "  - 方波输出，共12个波形\n\n");
+  // fprintf(stderr, "3. 仅信号生成测试:\n");
+  // fprintf(stderr, "  %s -g --start-freq 500000 --delta-freq 50000 \\\n", program_name);
+  // fprintf(stderr, "     --num-incr 5 --interval-val 2 --wave-type 2\n");
+  // fprintf(stderr, "  - DDS扫频: 500kHz → 750kHz，共6个频率点\n");
+  // fprintf(stderr, "  - 方波输出，共12个波形\n\n");
   
-  fprintf(stderr, "4. 带缓存的信号接收测试:\n");
-  fprintf(stderr, "  %s -r -c --start-gain 0 --end-gain 60 --duration-us 600000\n", program_name);
-  fprintf(stderr, "  - 增益扫描: 0dB → 60dB，持续0.6秒\n");
-  fprintf(stderr, "  - AD8338增益控制电压: 1.1V → 0.5V\n");
-  fprintf(stderr, "  - 所有网络数据包缓存供后续分析\n\n");
+  // fprintf(stderr, "4. 带缓存的信号接收测试:\n");
+  // fprintf(stderr, "  %s -r -c --start-gain 0 --end-gain 60 --duration-us 600000\n", program_name);
+  // fprintf(stderr, "  - 增益扫描: 0dB → 60dB，持续0.6秒\n");
+  // fprintf(stderr, "  - AD8338增益控制电压: 1.1V → 0.5V\n");
+  // fprintf(stderr, "  - 所有网络数据包缓存供后续分析\n\n");
   
-  fprintf(stderr, "5. 固定频率输出测试:\n");
-  fprintf(stderr, "  %s --start-freq 2000000 --delta-freq 0 --num-incr 1 --interval-val 50\n", program_name);
-  fprintf(stderr, "  - 固定2MHz频率输出 (频率步长=0)\n");
-  fprintf(stderr, "  - 共100个相同频率的波形\n\n");
+  // fprintf(stderr, "5. 固定频率输出测试:\n");
+  // fprintf(stderr, "  %s --start-freq 2000000 --delta-freq 0 --num-incr 1 --interval-val 50\n", program_name);
+  // fprintf(stderr, "  - 固定2MHz频率输出 (频率步长=0)\n");
+  // fprintf(stderr, "  - 共100个相同频率的波形\n\n");
   
-  fprintf(stderr, "6. 高增益灵敏度测试:\n");
-  fprintf(stderr, "  %s --start-gain 20 --end-gain 80 --duration-us 3000000\n", program_name);
-  fprintf(stderr, "  - 高增益范围: 20dB → 80dB\n");
-  fprintf(stderr, "  - 3秒缓慢增益变化\n");
-  fprintf(stderr, "  - 适用于弱信号检测和动态范围测试\n\n");
+  // fprintf(stderr, "6. 高增益灵敏度测试:\n");
+  // fprintf(stderr, "  %s --start-gain 20 --end-gain 80 --duration-us 3000000\n", program_name);
+  // fprintf(stderr, "  - 高增益范围: 20dB → 80dB\n");
+  // fprintf(stderr, "  - 3秒缓慢增益变化\n");
+  // fprintf(stderr, "  - 适用于弱信号检测和动态范围测试\n\n");
   
   fprintf(stderr, "MCLK倍频系数影响:\n");
   fprintf(stderr, "  0 (1倍):   每个频率点标准持续时间\n");
@@ -703,7 +692,7 @@ int parse_arguments(int argc, char *argv[], TestConfig *config) {
     .positive_incr = true,
     .start_gain = 0,
     .end_gain = 80,
-    .gain_duration_us = 1000000,
+    .gain_duration_us = 1000,
     .test_generate_only = false,
     .test_receive_only = false,
     .test_duration_sec = 10
