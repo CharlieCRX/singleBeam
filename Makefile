@@ -6,16 +6,20 @@
 # ======================================================
 # 目标板配置
 # ======================================================
-TARGET_IP     ?= 10.1.2.190
+# TARGET_IP     ?= 10.1.2.190
+TARGET_IP     ?= 192.168.1.8
 TARGET_USER   ?= root
 TARGET_PASSWD ?= 1
-TARGET_PATH   ?= /usr/bin
+TARGET_PATH   ?= /usr/bin/
 SSHPASS       := sshpass -p $(TARGET_PASSWD)
 
 # ======================================================
 # 编译器配置
 # ======================================================
 CC      := /home/crx/work/rk3568SDK/prebuilts/gcc/linux-x86/aarch64/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-gcc
+ifeq ($(origin CC), default)
+#CC := aarch64-poky-linux-gcc
+endif
 AR      := /home/crx/work/rk3568SDK/prebuilts/gcc/linux-x86/aarch64/gcc-arm-10.3-2021.07-x86_64-aarch64-none-linux-gnu/bin/aarch64-none-linux-gnu-ar
 CFLAGS  := -Wall -O2 -fPIC -Icore -Idev -Iprotocol -Iapp -Iutils
 LDFLAGS := -lpthread -lrt -lm
