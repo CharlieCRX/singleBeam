@@ -88,6 +88,7 @@ void receive_single_beam_response_with_cache(
 ) {
   // 启动FPGA采集
   fpga_init(i2c_dev);
+  fpga_trigger_soft_reset();
   fpga_set_acq_enable(true);
 
   // 启动网络监听（选择实时包回调或缓存模式）

@@ -122,17 +122,25 @@ bool fpga_get_acq_enable(void) {
 
 /**
  * @brief 触发FPGA软复位
- * @details 向FPGA的软复位寄存器写入复位命令, 一般需要 1 s后才能解除
+ * @details 向FPGA的软复位寄存器写入复位命令, // 存疑：一般需要 1 s后才能解除
  */
 void fpga_trigger_soft_reset(void) {
-  i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_FPGA_SRST, 0x0000);
+  if (i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_FPGA_SRST, 0x0000) < 0) {
+    LOG_ERROR("Failed to trigger FPGA soft reset.\n");
+    exit(-1);
+  }
+  LOG_INFO("FPGA soft reset triggered.\n");
 }
 
 /**
  * @brief 解除FPGA软复位
  */
 void fpga_release_soft_reset(void) {
-  i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_FPGA_SRST, 0x0001);
+  if (i2c_hal_fpga_write(FPGA_I2C_SLAVE, REG_FPGA_SRST, 0x0001) < 0) {
+    LOG_ERROR("Failed to release FPGA soft reset.\n");
+    exit(-1);
+  }
+  LOG_INFO("FPGA soft reset released.\n");
 }
 
 

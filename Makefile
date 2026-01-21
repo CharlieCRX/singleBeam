@@ -7,7 +7,8 @@
 # 目标板配置
 # ======================================================
 # TARGET_IP     ?= 10.1.2.190
-TARGET_IP     ?= 192.168.1.8
+# TARGET_IP     ?= 192.168.1.8
+TARGET_IP     ?= 10.1.2.184
 TARGET_USER   ?= root
 TARGET_PASSWD ?= 1
 TARGET_PATH   ?= /usr/bin/
